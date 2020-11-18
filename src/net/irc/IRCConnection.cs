@@ -44,14 +44,14 @@ public class IRCConnection : IDisposable {
         EventKeywords = new List<string>();
         Assembly assembly = Assembly.GetEntryAssembly();
         foreach(Type type in assembly.GetTypes()) {
-            object[] attributes = type.GetCustomAttributes(typeof(IRCEventType), true);
+            object[] attributes = type.GetCustomAttributes(typeof(IRCEvent), true);
             if(attributes.Length > 0) {
-                EventKeywords.Add(((IRCEventType) attributes[0]).MessageType);
+                EventKeywords.Add(((IRCEvent) attributes[0]).MessageType);
             }
         }
     }
 
-    public void ProcessMessages(Action<IRCEvent> eventCallback) {
+    public void ProcessMessages(Action<Event> eventCallback) {
         try {
             Writer.WriteLine("PASS {0}", Pass);
             Writer.WriteLine("NICK {0}", Nick);
@@ -85,10 +85,10 @@ public class IRCConnection : IDisposable {
                     if(line.Contains("PRIVMSG")) {
                         IRCPrivMsgEvent messageEvent = new IRCPrivMsgEvent() {
                             Parameters = parameters,
-                            Author = splitArray[1].Until('!').Substring(1),
+                            Author = splitArray[1].Until("!").Substring(1),
                             Channel = splitArray[3].Substring(1),
-                            Message = splitArray[4].Substring(1),
                         };
+                        messageEvent.Message = line.After("PRIVMSG #" + messageEvent.Channel + " :");
                         eventCallback(messageEvent);
                     }
                 }
@@ -96,5 +96,9 @@ public class IRCConnection : IDisposable {
         } catch(Exception) {
             Debug.Warning("IRC Connection lost!");
         }
+    }
+
+    public void SendPrivMsg(string channel, string message) {
+        Writer.WriteLine("PRIVMSG #{0} :{1}", channel, message);
     }
 }
