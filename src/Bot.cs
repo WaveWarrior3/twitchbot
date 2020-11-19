@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Reflection;
 using System.Collections.Generic;
 using System.Threading;
@@ -18,9 +19,14 @@ public static class Bot {
     public static Thread IRCThread;
 
     public static Dictionary<string, (SystemCommand Metadata, SystemCommandFn Function)> SystemCommands;
+    public static List<Server> Servers = new List<Server>();
 
     public static void Start() {
         Keys = JsonConvert.DeserializeObject<Keys>(File.ReadAllText("keys.json"));
+
+        foreach(Server server in Servers) {
+            server.Initialize();
+        }
 
         FindSystemCommands();
         StartIRCThread();
@@ -48,7 +54,7 @@ public static class Bot {
             User = "Senjougaharabot",
             Nick = "Senjougaharabot",
             Pass = Keys.IRCPassword,
-            Channels = new string[] { "stringflow77" },
+            Channels = Servers.Where(s => s.IRCChannelName != null).Select(s => s.IRCChannelName).ToArray(),
         };
 
         IRCThread = new Thread(() => {
@@ -81,16 +87,23 @@ public static class Bot {
             Args = new ArraySegment<string>(splitArray, 1, splitArray.Length - 1),
             FullString = firstSpace != -1 ? e.Message.Substring(firstSpace) : "",
         };
+        Server server = Servers.Find(s => s.IRCChannelName.ToLower() == e.Channel.ToLower());
 
-        if(SystemCommands.ContainsKey(command)) {
-            (SystemCommand Metadata, SystemCommandFn Function) systemCommand = SystemCommands[command];
-            if(systemCommand.Metadata.MinArguments > args.Length()) return;
-
-            IRC.SendPrivMsg(e.Channel, SystemCommands[command].Function(e.Author, args));
-        }
+        ExecuteCommand(command, server, e.Author, args);
     }
 
     public static void OnIRCState(IRCUserStateEvent e) {
         Debug.Log("Updated state in channel " + e.Channel);
+    }
+
+    public static void ExecuteCommand(string command, Server server, string author, Arguments args) {
+        if(SystemCommands.TryGetValue(command, out (SystemCommand Metadata, SystemCommandFn Function) systemCommand)) {
+            if(systemCommand.Metadata.MinArguments > args.Length()) return;
+            IRC.SendPrivMsg(server.IRCChannelName, SystemCommands[command].Function(server, author, args));
+        }
+
+        if(server.TextCommands.TryGetValue(command, out TextCommand textCommand)) {
+            IRC.SendPrivMsg(server.IRCChannelName, textCommand.Execute(server, author, args));
+        }
     }
 }

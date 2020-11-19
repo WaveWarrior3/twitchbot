@@ -19,7 +19,7 @@ public class Arguments {
     public string Join(int startIndex, string separator) {
         StringBuilder sb = new StringBuilder();
         for(int i = startIndex; i < Args.Count; i++) {
-            sb.Append(Args[startIndex]);
+            sb.Append(Args[i]);
             if(i != Args.Count - 1) sb.Append(separator);
         }
         return sb.ToString();
