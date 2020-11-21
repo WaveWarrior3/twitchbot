@@ -1,14 +1,14 @@
 using System;
 using System.Linq;
 
-public delegate string SystemCommandFn(Server server, string author, Arguments args);
+public delegate string SystemCommandFn(Server server, string author, Permission permission, Arguments args);
 
 public static class SystemCommandsImpl {
 
     public static Random Random = new Random();
 
     [SystemCommand("!command", 2)]
-    public static string Command(Server server, string author, Arguments args) {
+    public static string Command(Server server, string author, Permission permission, Arguments args) {
         string commandName = args[1].ToLower();
         if(args.Matches("add .+ .+")) {
             if(server.IsCommandNameInUse(commandName)) return "Command name " + commandName + " is already in use."; // TODO: Reason?
@@ -35,12 +35,12 @@ public static class SystemCommandsImpl {
     }
 
     [SystemCommand("!test")]
-    public static string Test(Server server, string author, Arguments args) {
+    public static string Test(Server server, string author, Permission permission, Arguments args) {
         return "Your connection is still working.";
     }
 
     [SystemCommand("!roll")]
-    public static string Roll(Server server, string author, Arguments args) {
+    public static string Roll(Server server, string author, Permission permission, Arguments args) {
         int upperBound = 100;
         if(args.Length() > 0) {
             if(!args.Matches("\\d+")) return "Correct Syntax: !roll (upper bound)";

@@ -18,6 +18,7 @@ public class Program {
                 Name = name,
                 IRCChannelName = name,
                 TextCommands = new Dictionary<string, TextCommand>(),
+                NumSlotsEmotes = 16,
             };
         } else {
             server = JsonConvert.DeserializeObject<Server>(File.ReadAllText(path));

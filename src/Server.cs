@@ -10,6 +10,10 @@ public class Server {
     public string IRCChannelName;
     public Dictionary<string, TextCommand> TextCommands;
 
+    [JsonIgnore]
+    public List<Emote> Emotes = new List<Emote>();
+    public int NumSlotsEmotes;
+
     public void Initialize() {
     }
 

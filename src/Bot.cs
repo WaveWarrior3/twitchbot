@@ -87,23 +87,51 @@ public static class Bot {
             Args = new ArraySegment<string>(splitArray, 1, splitArray.Length - 1),
             FullString = firstSpace != -1 ? e.Message.Substring(firstSpace) : "",
         };
-        Server server = Servers.Find(s => s.IRCChannelName.ToLower() == e.Channel.ToLower());
+        Server server = GetServerByIRCRoom(e.Channel);
 
-        ExecuteCommand(command, server, e.Author, args);
+        string[] badges = e.Parameters["badges"].Split(",");
+        Permission permission = Permission.Chatter;
+        if(badges.Any(badge => badge.StartsWith("broadcaster"))) {
+            permission = Permission.Streamer;
+        } else if(badges.Any(badge => badge.StartsWith("moderator"))) {
+            permission = Permission.Moderator;
+        } else if(badges.Any(badge => badge.StartsWith("vip"))) { // TODO: Check if this is actually named this!!!!
+            permission = Permission.VIP;
+        } else if(badges.Any(badge => badge.StartsWith("subscriber"))) {
+            permission = Permission.Subscriber;
+        }
+
+        ExecuteCommand(command, server, e.Author, permission, args);
     }
 
     public static void OnIRCState(IRCUserStateEvent e) {
         Debug.Log("Updated state in channel " + e.Channel);
+
+        Server server = GetServerByIRCRoom(e.Channel);
+        if(server.Emotes.Count == 0) {
+            string[] emoteSets = e.Parameters["emote-sets"].Split(",");
+            foreach(string set in emoteSets) {
+                server.Emotes.AddRange(TwitchEmotes.GetSetEmotes(Convert.ToInt32(set)));
+            }
+            server.Emotes.AddRange(FrankerFaceZ.GetChannelEmotes(e.Channel));
+            server.Emotes.AddRange(BetterTwitchTV.GetGlobalEmotes());
+            //server.Emotes.AddRange(BetterTwitchTV.GetChannelEmotes());
+        }
     }
 
-    public static void ExecuteCommand(string command, Server server, string author, Arguments args) {
+    public static Server GetServerByIRCRoom(string name) {
+        name = name.ToLower();
+        return Servers.Find(s => s.IRCChannelName.ToLower() == name);
+    }
+
+    public static void ExecuteCommand(string command, Server server, string author, Permission permission, Arguments args) {
         if(SystemCommands.TryGetValue(command, out (SystemCommand Metadata, SystemCommandFn Function) systemCommand)) {
             if(systemCommand.Metadata.MinArguments > args.Length()) return;
-            IRC.SendPrivMsg(server.IRCChannelName, SystemCommands[command].Function(server, author, args));
+            IRC.SendPrivMsg(server.IRCChannelName, SystemCommands[command].Function(server, author, permission, args));
         }
 
         if(server.TextCommands.TryGetValue(command, out TextCommand textCommand)) {
-            IRC.SendPrivMsg(server.IRCChannelName, textCommand.Execute(server, author, args));
+            IRC.SendPrivMsg(server.IRCChannelName, textCommand.Execute(server, author, permission, args));
         }
     }
 }

@@ -46,6 +46,6 @@ public class Arguments {
     }
 
     public bool Matches(string pattern) {
-        return Regex.IsMatch(FullString, pattern);
+        return Regex.IsMatch(FullString.ToLower(), pattern);
     }
 }
