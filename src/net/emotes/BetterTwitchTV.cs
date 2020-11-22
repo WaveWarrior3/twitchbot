@@ -17,6 +17,7 @@ public static class BetterTwitchTV {
             return null;
         }
 
+        // TODO: The response JSON does not have the same layout for channel emotes
         dynamic emotes = response.Unpack();
         List<Emote> result = new List<Emote>();
         foreach(dynamic emote in emotes) {

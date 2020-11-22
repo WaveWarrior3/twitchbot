@@ -3,12 +3,16 @@ using System.Linq;
 using System.Reflection;
 using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
 using System.IO;
 using Newtonsoft.Json;
 
 public struct Keys {
 
     public string IRCPassword;
+    public string TwitchAuthKey;
+    public string TwitchClientID;
+    public string TwitchSecret;
 }
 
 public static class Bot {
@@ -70,11 +74,13 @@ public static class Bot {
     }
 
     public static void OnEvent(Event e) {
-        EventDispatcher dispatcher = new EventDispatcher {
-            Event = e
-        };
-        dispatcher.Dispatch<IRCPrivMsgEvent>(OnIRCMessage);
-        dispatcher.Dispatch<IRCUserStateEvent>(OnIRCState);
+        Task.Run(() => {
+            EventDispatcher dispatcher = new EventDispatcher {
+                Event = e
+            };
+            dispatcher.Dispatch<IRCPrivMsgEvent>(OnIRCMessage);
+            dispatcher.Dispatch<IRCUserStateEvent>(OnIRCState);
+        });
     }
 
     public static void OnIRCMessage(IRCPrivMsgEvent e) {
@@ -115,7 +121,7 @@ public static class Bot {
             }
             server.Emotes.AddRange(FrankerFaceZ.GetChannelEmotes(e.Channel));
             server.Emotes.AddRange(BetterTwitchTV.GetGlobalEmotes());
-            //server.Emotes.AddRange(BetterTwitchTV.GetChannelEmotes());
+            //server.Emotes.AddRange(BetterTwitchTV.GetChannelEmotes(server.TwitchChannelId));
         }
     }
 

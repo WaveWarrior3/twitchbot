@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.IO;
 using System.Collections.Generic;
 using Newtonsoft.Json;
@@ -6,6 +7,7 @@ using Newtonsoft.Json;
 public class Program {
 
     public static void Main(string[] args) {
+        CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
         RegisterServer("stringflow77");
         Bot.Start();
     }

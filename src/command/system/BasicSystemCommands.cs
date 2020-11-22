@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 
 public delegate string SystemCommandFn(Server server, string author, Permission permission, Arguments args);
 
@@ -47,5 +46,20 @@ public static class SystemCommandsImpl {
             upperBound = args.Int(0);
         }
         return "The roll returns " + Random.Next(upperBound) + "!";
+    }
+
+    [SystemCommand("!uptime")]
+    public static string Uptime(Server server, string author, Permission permission, Arguments args) {
+        TwitchStream stream = Twitch.GetStream(server.IRCChannelName);
+        if(stream == null) return server.IRCChannelName + " is not live.";
+
+        DateTime starttime = DateTime.Parse(stream.started_at);
+        TimeSpan uptime = DateTime.Now - starttime;
+
+        string hours = uptime.Hours + " hour" + (uptime.Hours == 1 ? "" : "s");
+        string minutes = uptime.Minutes + " minute" + (uptime.Minutes == 1 ? "" : "s");
+        string seconds = (uptime.TotalSeconds % 60) + " second" + (uptime.Seconds == 1 ? "" : "s");
+
+        return "Uptime: " + hours + " " + minutes + " " + seconds;
     }
 }

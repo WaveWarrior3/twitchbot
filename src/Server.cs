@@ -14,7 +14,12 @@ public class Server {
     public List<Emote> Emotes = new List<Emote>();
     public int NumSlotsEmotes;
 
+    public string TwitchChannelId;
+
     public void Initialize() {
+        if(IRCChannelName != null) {
+            TwitchChannelId = Twitch.GetUser(IRCChannelName).id;
+        }
     }
 
     public void Serialize() {
