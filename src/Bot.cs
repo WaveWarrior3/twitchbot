@@ -13,6 +13,7 @@ public struct Keys {
     public string TwitchAuthKey;
     public string TwitchClientID;
     public string TwitchSecret;
+    public string SRCAuthKey;
 }
 
 public static class Bot {
@@ -64,11 +65,10 @@ public static class Bot {
         IRCThread = new Thread(() => {
             bool autoReconnect = true;
 
-            while(true) {
+            do {
                 IRC.EstablishConnection();
                 IRC.ProcessMessages(OnEvent);
-                if(!autoReconnect) break;
-            }
+            } while(autoReconnect);
         });
         IRCThread.Start();
     }

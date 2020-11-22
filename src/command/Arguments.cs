@@ -16,11 +16,11 @@ public class Arguments {
         }
     }
 
-    public string Join(int startIndex, string separator) {
+    public string Join(int startIndex, int endIndex, string separator) {
         StringBuilder sb = new StringBuilder();
-        for(int i = startIndex; i < Args.Count; i++) {
+        for(int i = startIndex; i < endIndex; i++) {
             sb.Append(Args[i]);
-            if(i != Args.Count - 1) sb.Append(separator);
+            if(i != endIndex - 1) sb.Append(separator);
         }
         return sb.ToString();
     }

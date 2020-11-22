@@ -39,24 +39,28 @@ public static class Twitch {
     }
 
     public static TwitchUser GetUser(string name) {
-        if(!Http.Get(out HttpResponse response, "https://api.twitch.tv/helix/users?login=" + name, "Authorization", Bot.Keys.TwitchAuthKey, "Client-Id", Bot.Keys.TwitchClientID)) {
+        if(!MakeAuthorizedRequest("https://api.twitch.tv/helix/users?login=" + name, out dynamic data)) {
             return null;
         }
-
-        dynamic data = response.Unpack().data;
-        if(data.Count == 0) return null;
 
         return JsonConvert.DeserializeObject<TwitchUser>(data[0].ToString());
     }
 
     public static TwitchStream GetStream(string name) {
-        if(!Http.Get(out HttpResponse response, "https://api.twitch.tv/helix/streams?user_login=" + name, "Authorization", Bot.Keys.TwitchAuthKey, "Client-Id", Bot.Keys.TwitchClientID)) {
+        if(!MakeAuthorizedRequest("https://api.twitch.tv/helix/streams?user_login=" + name, out dynamic data)) {
             return null;
         }
 
-        dynamic data = response.Unpack().data;
-        if(data.Count == 0) return null;
-
         return JsonConvert.DeserializeObject<TwitchStream>(data[0].ToString());
+    }
+
+    private static bool MakeAuthorizedRequest(string url, out dynamic data) {
+        data = null;
+        if(!Http.Get(out HttpResponse response, url, "Authorization", Bot.Keys.TwitchAuthKey, "Client-Id", Bot.Keys.TwitchClientID)) {
+            return false;
+        }
+
+        data = response.Unpack().data;
+        return data.Count != 0;
     }
 }
