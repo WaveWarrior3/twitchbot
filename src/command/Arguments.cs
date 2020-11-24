@@ -25,6 +25,14 @@ public class Arguments {
         return sb.ToString();
     }
 
+    public string[] Sub(int start, int end) {
+        string[] array = new string[end - start];
+        for(int i = start; i < end; i++) {
+            array[i - start] = Args[i];
+        }
+        return array;
+    }
+
     public bool TryInt(int index, out int ret) {
         return int.TryParse(Args[index], out ret);
     }

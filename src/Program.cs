@@ -16,12 +16,9 @@ public class Program {
         string path = "servers/" + name + ".json";
         Server server;
         if(!File.Exists(path)) {
-            server = new Server {
-                Name = name,
-                IRCChannelName = name,
-                TextCommands = new Dictionary<string, TextCommand>(),
-                NumSlotsEmotes = 16,
-            };
+            server = new Server();
+            server.Name = name;
+            server.IRCChannelName = name;
         } else {
             server = JsonConvert.DeserializeObject<Server>(File.ReadAllText(path));
         }

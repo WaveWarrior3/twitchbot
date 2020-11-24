@@ -109,4 +109,60 @@ public static class SystemCommandsImpl {
             return place + StringFunctions.PlaceEnding(place) + " place in " + game.Name + " " + category.Name + " is a " + runs.Count + "-way tie between " + string.Join(", ", runs.Select(run => run.Player.Name)) + " with a time of " + formattedTime;
         }
     }
+
+    [SystemCommand("!quote")]
+    public static string Quote(Server server, string author, Permission permission, Arguments args) {
+        if(args.Length() > 0) {
+            if(args[0].EqualsIgnoreCase("add")) {
+                if(!args.Matches("add .+ .+")) return "Correct Syntax: !quote add (quotee) (message)";
+                string quotee = args[1];
+                string message = args.Join(2, args.Length(), " ");
+                server.Quotes.Add(new Quote { Quotee = quotee, Message = message });
+                server.Serialize();
+                return "Quote #" + server.Quotes.Count() + " by " + quotee + " has been added.";
+            } else if(args[0].EqualsIgnoreCase("edit")) {
+                if(!args.Matches("edit \\d+ .+ .+")) return "Correct Syntax: !quote edit (quote number) (quotee) (message)";
+                int quoteNumber = args.Int(1) - 1;
+                string quotee = args[2];
+                string message = args.Join(3, args.Length(), " ");
+                if(quoteNumber < 0 || quoteNumber >= server.Quotes.Count) return "Quote #" + args[1] + " does not exist.";
+                server.Quotes[quoteNumber] = new Quote { Quotee = quotee, Message = message };
+                server.Serialize();
+                return "Quote #" + args[1] + " has been edited.";
+            } else if(args[0].EqualsIgnoreCase("del")) {
+                if(!args.Matches("del \\d+")) return "Correct Syntax: !quote del (quote number)";
+                int quoteNumber = args.Int(1) - 1;
+                if(quoteNumber < 0 || quoteNumber >= server.Quotes.Count) return "Quote #" + args[1] + " does not exist.";
+                server.Quotes.RemoveAt(quoteNumber);
+                server.Serialize();
+                return "Quote #" + args[1] + " has been removed.";
+            } else if(args[0].EqualsIgnoreCase("search")) {
+                string[] words = args.Sub(1, args.Length()).Select(x => x.ToLower()).ToArray();
+                HashSet<Quote> matchingQuotes = new HashSet<Quote>();
+                foreach(Quote q in server.Quotes) {
+                    string message = q.Message.ToLower();
+                    if(words.Any(w => message.Contains(w))) {
+                        matchingQuotes.Add(q);
+                    }
+                }
+
+                if(matchingQuotes.Count == 0) return "No matching quotes found.";
+
+                foreach(Quote q in matchingQuotes) {
+                    Bot.IRC.SendPrivMsg(server.IRCChannelName, FormatQuote(server, q));
+                }
+
+                return null;
+            }
+        }
+
+        if(server.Quotes.Count == 0) return "No quotes have been added, yet.";
+
+        return FormatQuote(server, server.Quotes[Random.Next(server.Quotes.Count)]);
+    }
+
+    private static string FormatQuote(Server server, Quote quote) {
+        int id = server.Quotes.IndexOf(quote) + 1;
+        return "Quote #" + id + " by " + quote.Quotee + ": \"" + quote.Message + "\"";
+    }
 }
