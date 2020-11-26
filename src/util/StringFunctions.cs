@@ -23,4 +23,8 @@ public static class StringFunctions {
             default: return "th";
         }
     }
+
+    public static int NumOccurrences(this string str, string chars) {
+        return str.Length - str.Replace(chars, "").Length;
+    }
 }

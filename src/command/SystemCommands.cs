@@ -5,9 +5,19 @@ using System.Collections.Generic;
 
 public delegate string SystemCommandFn(Server server, string author, Permission permission, Arguments args);
 
-public static class SystemCommandsImpl {
+[AttributeUsage(AttributeTargets.Method, Inherited = false)]
+public class SystemCommand : Attribute {
 
-    public static Random Random = new Random();
+    public string Name;
+    public int MinArguments;
+
+    public SystemCommand(string name, int minArguments = 0) {
+        Name = name;
+        MinArguments = minArguments;
+    }
+}
+
+public static class SystemCommandsImpl {
 
     [SystemCommand("!command", 2)]
     public static string Command(Server server, string author, Permission permission, Arguments args) {
@@ -15,22 +25,56 @@ public static class SystemCommandsImpl {
         if(args.Matches("add .+ .+")) {
             if(server.IsCommandNameInUse(commandName)) return "Command name " + commandName + " is already in use."; // TODO: Reason?
             string message = args.Join(2, args.Length(), " ");
-            server.TextCommands[commandName] = new TextCommand {
+            server.CustomCommands[commandName] = new TextCommand {
                 Name = commandName,
                 Message = message,
             };
             server.Serialize();
             return "Command " + commandName + " has been added.";
         } else if(args.Matches("edit .+ .+")) {
-            if(!server.TextCommands.TryGetValue(commandName, out TextCommand textCommand)) return "Command " + commandName + " does not exist.";
+            if(!server.CustomCommands.TryGetValue(commandName, out TextCommand textCommand)) return "Command " + commandName + " does not exist.";
             textCommand.Message = args.Join(2, args.Length(), " ");
             server.Serialize();
             return "Command " + commandName + " has been edited.";
         } else if(args.Matches("del .+")) {
-            if(!server.TextCommands.TryGetValue(commandName, out TextCommand textCommand)) return "Command " + commandName + " does not exist.";
-            server.TextCommands.Remove(commandName);
+            if(!server.CustomCommands.TryGetValue(commandName, out TextCommand textCommand)) return "Command " + commandName + " does not exist.";
+            server.CustomCommands.Remove(commandName);
             server.Serialize();
             return "Command " + commandName + " has been removed.";
+        } else if(args.Matches("transform .+ .+")) {
+            if(!server.CustomCommands.TryGetValue(commandName, out TextCommand oldCommand)) return "Command " + commandName + " does not exist.";
+            server.CustomCommands.Remove(commandName);
+            string type = args[2].ToLower();
+
+            switch(type) {
+                case TextCommand.Type:
+                    server.CustomCommands[commandName] = new TextCommand {
+                        Name = oldCommand.Name,
+                        Message = oldCommand.Message,
+                    };
+                    break;
+                case CounterCommand.Type:
+                    server.CustomCommands[commandName] = new CounterCommand {
+                        Name = oldCommand.Name,
+                        Message = oldCommand.Message,
+                        Counter = 0,
+                    };
+                    break;
+                case FractionCommand.Type:
+                    server.CustomCommands[commandName] = new FractionCommand {
+                        Name = oldCommand.Name,
+                        Message = oldCommand.Message,
+                        Numerator = 0,
+                        Denominator = 0,
+                    };
+                    break;
+                default:
+                    server.CustomCommands[commandName] = oldCommand;
+                    return type + " is not a valid command type.";
+            }
+
+            server.Serialize();
+            return "Command " + commandName + " has been transformed to a " + type + "-command.";
         }
 
         return null;
@@ -49,6 +93,39 @@ public static class SystemCommandsImpl {
             upperBound = args.Int(0);
         }
         return "The roll returns " + Random.Next(upperBound) + "!";
+    }
+
+    [SystemCommand("!slots")]
+    public static string Slots(Server server, string author, Permission permission, Arguments args) {
+        if((args.Matches("emotes \\d+") || args.Matches("setemotes \\d+")) && permission >= Permission.Moderator) {
+            int newEmotes = args.Int(1);
+            if(newEmotes < 1) return "The number of emotes must be at least 1.";
+
+            server.NumSlotsEmotes = newEmotes;
+            server.Serialize();
+            return "Slots use a pool of " + newEmotes + " emotes now (1/" + (int) (Math.Pow(newEmotes, 2)) + " chance to win).";
+        }
+
+        if(args.Matches("odds")) {
+            return "1/" + (int) (Math.Pow(server.NumSlotsEmotes, 2)) + " chance to win.";
+        }
+
+        const int slotsSize = 3;
+
+        string[] emotePool = server.Emotes.OrderBy(x => Random.Next()).Take(server.NumSlotsEmotes).Select(emote => emote.Code).ToArray();
+        string[] emotes = new string[slotsSize];
+        for(int i = 0; i < emotes.Length; i++) {
+            emotes[i] = Random.Next(emotePool);
+        }
+
+        int numUniques = emotes.Distinct().Count();
+
+        Bot.IRC.SendPrivMsg(server.IRCChannelName, string.Join(" | ", emotes));
+        if(numUniques == 1) {
+            Bot.IRC.SendPrivMsg(server.IRCChannelName, author + " has won the slots! " + emotes[0]);
+        }
+
+        return null;
     }
 
     [SystemCommand("!uptime")]
@@ -158,7 +235,7 @@ public static class SystemCommandsImpl {
 
         if(server.Quotes.Count == 0) return "No quotes have been added, yet.";
 
-        return FormatQuote(server, server.Quotes[Random.Next(server.Quotes.Count)]);
+        return FormatQuote(server, Random.Next(server.Quotes));
     }
 
     private static string FormatQuote(Server server, Quote quote) {

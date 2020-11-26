@@ -136,7 +136,7 @@ public static class Bot {
             IRC.SendPrivMsg(server.IRCChannelName, SystemCommands[command].Function(server, author, permission, args));
         }
 
-        if(server.TextCommands.TryGetValue(command, out TextCommand textCommand)) {
+        if(server.CustomCommands.TryGetValue(command, out TextCommand textCommand)) {
             IRC.SendPrivMsg(server.IRCChannelName, textCommand.Execute(server, author, permission, args));
         }
     }

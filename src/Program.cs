@@ -6,6 +6,8 @@ using Newtonsoft.Json;
 
 public class Program {
 
+    public static JsonSerializerSettings JsonSettings = new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.All };
+
     public static void Main(string[] args) {
         CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
         RegisterServer("stringflow77");
@@ -20,7 +22,7 @@ public class Program {
             server.Name = name;
             server.IRCChannelName = name;
         } else {
-            server = JsonConvert.DeserializeObject<Server>(File.ReadAllText(path));
+            server = JsonConvert.DeserializeObject<Server>(File.ReadAllText(path), JsonSettings);
         }
 
         Bot.Servers.Add(server);

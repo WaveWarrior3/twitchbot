@@ -14,13 +14,13 @@ public class Server {
 
     public string Name;
     public string IRCChannelName;
-    public Dictionary<string, TextCommand> TextCommands = new Dictionary<string, TextCommand>();
+    public Dictionary<string, TextCommand> CustomCommands = new Dictionary<string, TextCommand>();
     public List<Quote> Quotes = new List<Quote>();
+
+    public int NumSlotsEmotes = 16;
 
     [JsonIgnore]
     public List<Emote> Emotes = new List<Emote>();
-    public int NumSlotsEmotes = 16;
-
     [JsonIgnore]
     public string TwitchChannelId = null;
 
@@ -32,13 +32,13 @@ public class Server {
 
     public void Serialize() {
         lock(Name) {
-            File.WriteAllText("servers/" + Name + ".json", JsonConvert.SerializeObject(this, Formatting.Indented));
+            File.WriteAllText("servers/" + Name + ".json", JsonConvert.SerializeObject(this, Formatting.Indented, Program.JsonSettings));
         }
     }
 
     public bool IsCommandNameInUse(string name) {
         name = name.ToLower();
-        return TextCommands.ContainsKey(name) ||
+        return CustomCommands.ContainsKey(name) ||
                Bot.SystemCommands.ContainsKey(name);
     }
 }
