@@ -52,6 +52,7 @@ public class CounterCommand : TextCommand {
             }
         }
 
+        server.Serialize();
         return FormatMessage(Message, server, author, permission, args);
     }
 
@@ -71,9 +72,19 @@ public class FractionCommand : TextCommand {
 
     public override string Execute(Server server, string author, Permission permission, Arguments args) {
         if(args.Length() > 0) {
-            // TODO
+            if(args.Matches("setnumerator \\d+")) {
+                Numerator = args.Int(1);
+            } else if(args.Matches("setdenominator \\d+")) {
+                Denominator = args.Int(1);
+            } else {
+                int numPlus = args[0].NumOccurrences("+");
+                int numMinus = args[0].NumOccurrences("-");
+                Numerator += numPlus;
+                Denominator += numPlus + numMinus;
+            }
         }
 
+        server.Serialize();
         return FormatMessage(Message, server, author, permission, args);
     }
 
