@@ -18,6 +18,8 @@ public class Server {
     public List<Emote> Emotes = new List<Emote>();
     [JsonIgnore]
     public string TwitchChannelId = null;
+    public bool StreamLive = false;
+    public string LastStreamId = "";
 
     public void Initialize() {
         CustomCommands = new Dictionary<string, TextCommand>(CustomCommands, StringComparer.OrdinalIgnoreCase);

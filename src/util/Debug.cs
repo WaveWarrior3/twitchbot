@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Reflection;
 
 public static class Debug {
 
@@ -31,5 +33,21 @@ public static class Debug {
         Console.ForegroundColor = color;
         Console.Write("[{0}] [{1}] ", time, level);
         Console.WriteLine(format, parameters);
+    }
+
+    public static List<(T Attribute, MethodInfo Function)> FindMethodsWithAttribute<T>() {
+        var result = new List<(T Attribute, MethodInfo Function)>();
+
+        Assembly asm = Assembly.GetExecutingAssembly();
+        foreach(Type type in asm.GetTypes()) {
+            foreach(MethodInfo method in type.GetMethods()) {
+                object[] attributes = method.GetCustomAttributes(typeof(T), false);
+                if(attributes.Length > 0) {
+                    result.Add(((T) attributes[0], method));
+                }
+            }
+        }
+
+        return result;
     }
 }

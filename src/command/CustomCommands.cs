@@ -84,7 +84,6 @@ public class FractionCommand : TextCommand {
             }
         }
 
-        server.Serialize();
         return FormatMessage(Message, server, author, permission, args);
     }
 
@@ -93,6 +92,30 @@ public class FractionCommand : TextCommand {
         message = message.Replace("%numerator%", Numerator.ToString());
         message = message.Replace("%denominator%", Denominator.ToString());
         message = message.Replace("%fraction%", ((float) Numerator / (float) Denominator).ToString());
+        return message;
+    }
+}
+
+public class TimerCommand : TextCommand {
+
+    public new const string Type = "timer";
+
+    public int Interval;
+
+    public override string Execute(Server server, string author, Permission permission, Arguments args) {
+        if(args.Length() > 0) {
+            if(args.TryInt(0, out int newValue)) {
+                Interval = newValue;
+                return "The interval of the timer-command " + Name + " has been set to " + newValue + " seconds.";
+            }
+        }
+
+        return FormatMessage(Message, server, author, permission, args);
+    }
+
+    public override string FormatMessage(string message, Server server, string author, Permission permission, Arguments args) {
+        message = base.FormatMessage(message, server, author, permission, args);
+        message = message.Replace("%interval%", Interval.ToString());
         return message;
     }
 }

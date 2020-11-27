@@ -16,6 +16,14 @@ public struct Keys {
     public string SRCAuthKey;
 }
 
+[AttributeUsage(AttributeTargets.Method, Inherited = false)]
+public class TimedEvent : Attribute {
+
+    public int Seconds;
+
+    public TimedEvent(int seconds) => Seconds = seconds;
+}
+
 public static class Bot {
 
     public static Keys Keys;
@@ -26,6 +34,8 @@ public static class Bot {
     public static Dictionary<string, (SystemCommand Metadata, SystemCommandFn Function)> SystemCommands;
     public static List<Server> Servers = new List<Server>();
 
+    public static Thread TimedEventsThread;
+
     public static void Start() {
         Keys = JsonConvert.DeserializeObject<Keys>(File.ReadAllText("keys.json"));
 
@@ -35,20 +45,15 @@ public static class Bot {
 
         FindSystemCommands();
         StartIRCThread();
+        StartTimedEvents();
     }
 
     public static void FindSystemCommands() {
-        SystemCommands = new Dictionary<string, (SystemCommand, SystemCommandFn)>(StringComparer.OrdinalIgnoreCase);
+        SystemCommands = new Dictionary<string, (SystemCommand Metadata, SystemCommandFn Function)>();
 
-        Assembly asm = Assembly.GetExecutingAssembly();
-        foreach(Type type in asm.GetTypes()) {
-            foreach(MethodInfo method in type.GetMethods()) {
-                object[] attributes = method.GetCustomAttributes(typeof(SystemCommand), false);
-                if(attributes.Length > 0) {
-                    SystemCommand attrib = (SystemCommand) attributes[0];
-                    SystemCommands[attrib.Name] = (attrib, (SystemCommandFn) Delegate.CreateDelegate(typeof(SystemCommandFn), method));
-                }
-            }
+        var methods = Debug.FindMethodsWithAttribute<SystemCommand>();
+        foreach(var method in methods) {
+            SystemCommands[method.Attribute.Name] = (method.Attribute, (SystemCommandFn) Delegate.CreateDelegate(typeof(SystemCommandFn), method.Function));
         }
     }
 
@@ -71,6 +76,27 @@ public static class Bot {
             } while(autoReconnect);
         });
         IRCThread.Start();
+    }
+
+    public static void StartTimedEvents() {
+        var timedEvents = Debug.FindMethodsWithAttribute<TimedEvent>();
+
+        TimedEventsThread = new Thread(() => {
+            ulong time = 0;
+            while(true) {
+                if(IRC.Connected) {
+                    foreach(var timedEvent in timedEvents) {
+                        if(time % (ulong) timedEvent.Attribute.Seconds == 0) {
+                            timedEvent.Function.Invoke(null, new object[] { time });
+                        }
+                    }
+                }
+
+                Thread.Sleep(1000);
+                time++;
+            }
+        });
+        TimedEventsThread.Start();
     }
 
     public static void OnEvent(Event e) {
@@ -115,6 +141,44 @@ public static class Bot {
             server.Emotes.AddRange(FrankerFaceZ.GetChannelEmotes(e.Channel));
             server.Emotes.AddRange(BetterTwitchTV.GetGlobalEmotes());
             //server.Emotes.AddRange(BetterTwitchTV.GetChannelEmotes(server.TwitchChannelId));
+        }
+    }
+
+    [TimedEvent(1)]
+    public static void GlobalTimerCommandsUpdate(ulong time) {
+        foreach(Server server in Servers) {
+            foreach(TextCommand command in server.CustomCommands.Values) {
+                if(command is TimerCommand) {
+                    TimerCommand timerCommand = (TimerCommand) command;
+                    if(time % (ulong) timerCommand.Interval == 0) {
+                        ExecuteCommand(command.Name, server, IRC.Nick, Permission.Moderator);
+                    }
+                }
+            }
+        }
+    }
+
+    [TimedEvent(15)]
+    public static void GlobalStreamUpdate(ulong time) {
+        foreach(Server server in Servers) {
+            TwitchStream stream = Twitch.GetStream(server.IRCChannelName);
+            bool online = stream != null;
+            bool previous = server.StreamLive;
+            if(online && !previous && stream.id != server.LastStreamId) {
+                // TODO: On online event
+            }
+            server.StreamLive = online;
+
+            if(online) {
+                server.LastStreamId = stream.id;
+            }
+        }
+    }
+
+    [TimedEvent(10)]
+    public static void GlobalSerialization(ulong time) {
+        foreach(Server server in Servers) {
+            server.Serialize();
         }
     }
 

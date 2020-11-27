@@ -14,6 +14,8 @@ public class IRCConnection : IDisposable {
     public string Pass;
     public string[] Channels;
 
+    public bool Connected;
+
     private List<string> EventKeywords;
 
     public TcpClient IRC;
@@ -31,6 +33,7 @@ public class IRCConnection : IDisposable {
     }
 
     public void EstablishConnection() {
+        Connected = false;
         if(IRC != null) {
             Dispose();
         }
@@ -63,6 +66,8 @@ public class IRCConnection : IDisposable {
             foreach(string channel in Channels) {
                 Writer.WriteLine("JOIN #{0}", channel);
             }
+
+            Connected = true;
 
             while(true) {
                 string line;

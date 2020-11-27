@@ -41,17 +41,14 @@ public static class SystemCommandsImpl {
                 Name = commandName,
                 Message = message,
             };
-            server.Serialize();
             return "Command " + commandName + " has been added.";
         } else if(args.Matches("edit .+ .+")) {
             if(!server.CustomCommands.TryGetValue(commandName, out TextCommand textCommand)) return "Command " + commandName + " does not exist.";
             textCommand.Message = args.Join(2, args.Length(), " ");
-            server.Serialize();
             return "Command " + commandName + " has been edited.";
         } else if(args.Matches("del .+")) {
             if(!server.CustomCommands.TryGetValue(commandName, out TextCommand textCommand)) return "Command " + commandName + " does not exist.";
             server.CustomCommands.Remove(commandName);
-            server.Serialize();
             return "Command " + commandName + " has been removed.";
         } else if(args.Matches("transform .+ .+")) {
             if(!server.CustomCommands.TryGetValue(commandName, out TextCommand oldCommand)) return "Command " + commandName + " does not exist.";
@@ -80,12 +77,18 @@ public static class SystemCommandsImpl {
                         Denominator = 0,
                     };
                     break;
+                case TimerCommand.Type:
+                    server.CustomCommands[commandName] = new TimerCommand {
+                        Name = oldCommand.Name,
+                        Message = oldCommand.Message,
+                        Interval = int.MaxValue,
+                    };
+                    break;
                 default:
                     server.CustomCommands[commandName] = oldCommand;
                     return type + " is not a valid command type.";
             }
 
-            server.Serialize();
             return "Command " + commandName + " has been transformed to a " + type + "-command.";
         }
 
@@ -102,17 +105,14 @@ public static class SystemCommandsImpl {
                 Name = aliasName,
                 Command = command,
             };
-            server.Serialize();
             return "Alias " + aliasName + " has been added.";
         } else if(args.Matches("edit .+ .+")) {
             if(!server.Aliases.TryGetValue(aliasName, out Alias alias)) return "Alias " + aliasName + " does not exist.";
             alias.Command = args.Join(2, args.Length(), " ");
-            server.Serialize();
             return "Command " + aliasName + " has been edited.";
         } else if(args.Matches("del .+")) {
             if(!server.Aliases.TryGetValue(aliasName, out Alias alias)) return "Alias " + aliasName + " does not exist.";
             server.CustomCommands.Remove(aliasName);
-            server.Serialize();
             return "Command " + aliasName + " has been removed.";
         }
 
@@ -141,7 +141,6 @@ public static class SystemCommandsImpl {
             if(newEmotes < 1) return "The number of emotes must be at least 1.";
 
             server.NumSlotsEmotes = newEmotes;
-            server.Serialize();
             return "Slots use a pool of " + newEmotes + " emotes now (1/" + (int) (Math.Pow(newEmotes, 2)) + " chance to win).";
         }
 
@@ -234,7 +233,6 @@ public static class SystemCommandsImpl {
                 string quotee = args[1];
                 string message = args.Join(2, args.Length(), " ");
                 server.Quotes.Add(new Quote { Quotee = quotee, Message = message });
-                server.Serialize();
                 return "Quote #" + server.Quotes.Count() + " by " + quotee + " has been added.";
             } else if(args[0].EqualsIgnoreCase("edit")) {
                 if(!args.Matches("edit \\d+ .+ .+")) return "Correct Syntax: !quote edit (quote number) (quotee) (message)";
@@ -243,14 +241,12 @@ public static class SystemCommandsImpl {
                 string message = args.Join(3, args.Length(), " ");
                 if(quoteNumber < 0 || quoteNumber >= server.Quotes.Count) return "Quote #" + args[1] + " does not exist.";
                 server.Quotes[quoteNumber] = new Quote { Quotee = quotee, Message = message };
-                server.Serialize();
                 return "Quote #" + args[1] + " has been edited.";
             } else if(args[0].EqualsIgnoreCase("del")) {
                 if(!args.Matches("del \\d+")) return "Correct Syntax: !quote del (quote number)";
                 int quoteNumber = args.Int(1) - 1;
                 if(quoteNumber < 0 || quoteNumber >= server.Quotes.Count) return "Quote #" + args[1] + " does not exist.";
                 server.Quotes.RemoveAt(quoteNumber);
-                server.Serialize();
                 return "Quote #" + args[1] + " has been removed.";
             } else if(args[0].EqualsIgnoreCase("search")) {
                 string[] words = args.Sub(1, args.Length()).Select(x => x.ToLower()).ToArray();
