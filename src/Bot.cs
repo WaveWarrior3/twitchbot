@@ -38,7 +38,7 @@ public static class Bot {
     }
 
     public static void FindSystemCommands() {
-        SystemCommands = new Dictionary<string, (SystemCommand, SystemCommandFn)>();
+        SystemCommands = new Dictionary<string, (SystemCommand, SystemCommandFn)>(StringComparer.OrdinalIgnoreCase);
 
         Assembly asm = Assembly.GetExecutingAssembly();
         foreach(Type type in asm.GetTypes()) {
@@ -46,7 +46,7 @@ public static class Bot {
                 object[] attributes = method.GetCustomAttributes(typeof(SystemCommand), false);
                 if(attributes.Length > 0) {
                     SystemCommand attrib = (SystemCommand) attributes[0];
-                    SystemCommands[attrib.Name.ToLower()] = (attrib, (SystemCommandFn) Delegate.CreateDelegate(typeof(SystemCommandFn), method));
+                    SystemCommands[attrib.Name] = (attrib, (SystemCommandFn) Delegate.CreateDelegate(typeof(SystemCommandFn), method));
                 }
             }
         }
@@ -86,13 +86,6 @@ public static class Bot {
     public static void OnIRCMessage(IRCPrivMsgEvent e) {
         Debug.Log("#{0} {1}: {2}", e.Channel, e.Author, e.Message);
 
-        string[] splitArray = e.Message.Split(" ");
-        string command = splitArray[0].ToLower();
-        int firstSpace = e.Message.IndexOf(" ");
-        Arguments args = new Arguments() {
-            Args = new ArraySegment<string>(splitArray, 1, splitArray.Length - 1),
-            FullString = firstSpace != -1 ? e.Message.Substring(firstSpace) : "",
-        };
         Server server = GetServerByIRCRoom(e.Channel);
 
         string[] badges = e.Parameters["badges"].Split(",");
@@ -107,7 +100,7 @@ public static class Bot {
             permission = Permission.Subscriber;
         }
 
-        ExecuteCommand(command, server, e.Author, permission, args);
+        ExecuteCommand(e.Message, server, e.Author, permission);
     }
 
     public static void OnIRCState(IRCUserStateEvent e) {
@@ -130,7 +123,20 @@ public static class Bot {
         return Servers.Find(s => s.IRCChannelName.ToLower() == name);
     }
 
-    public static void ExecuteCommand(string command, Server server, string author, Permission permission, Arguments args) {
+    public static void ExecuteCommand(string message, Server server, string author, Permission permission) {
+        string[] splitArray = message.Split(" ");
+        string command = splitArray[0].ToLower();
+        int firstSpace = message.IndexOf(" ");
+        Arguments args = new Arguments() {
+            Args = new ArraySegment<string>(splitArray, 1, splitArray.Length - 1),
+            FullString = firstSpace != -1 ? message.Substring(firstSpace) : "",
+        };
+
+        if(server.Aliases.TryGetValue(command, out Alias alias)) {
+            ExecuteCommand(alias.Command, server, author, permission);
+            return;
+        }
+
         if(SystemCommands.TryGetValue(command, out (SystemCommand Metadata, SystemCommandFn Function) systemCommand)) {
             if(systemCommand.Metadata.MinArguments > args.Length()) return;
             IRC.SendPrivMsg(server.IRCChannelName, SystemCommands[command].Function(server, author, permission, args));

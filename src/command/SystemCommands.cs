@@ -17,13 +17,25 @@ public class SystemCommand : Attribute {
     }
 }
 
+public struct Quote {
+
+    public string Quotee;
+    public string Message;
+}
+
+public struct Alias {
+
+    public string Name;
+    public string Command;
+}
+
 public static class SystemCommandsImpl {
 
     [SystemCommand("!command", 2)]
     public static string Command(Server server, string author, Permission permission, Arguments args) {
         string commandName = args[1].ToLower();
         if(args.Matches("add .+ .+")) {
-            if(server.IsCommandNameInUse(commandName)) return "Command name " + commandName + " is already in use."; // TODO: Reason?
+            if(server.IsCommandNameInUse(commandName, out CommandType type)) return "The name " + commandName + " is already in by " + type.Format() + ".";
             string message = args.Join(2, args.Length(), " ");
             server.CustomCommands[commandName] = new TextCommand {
                 Name = commandName,
@@ -75,6 +87,33 @@ public static class SystemCommandsImpl {
 
             server.Serialize();
             return "Command " + commandName + " has been transformed to a " + type + "-command.";
+        }
+
+        return null;
+    }
+
+    [SystemCommand("!alias")]
+    public static string Alias(Server server, string author, Permission permission, Arguments args) {
+        string aliasName = args[1].ToLower();
+        if(args.Matches("add .+ .+")) {
+            if(server.IsCommandNameInUse(aliasName, out CommandType type)) return "The name " + aliasName + " is already in by " + type.Format() + ".";
+            string command = args.Join(2, args.Length(), " ");
+            server.Aliases[aliasName] = new Alias {
+                Name = aliasName,
+                Command = command,
+            };
+            server.Serialize();
+            return "Alias " + aliasName + " has been added.";
+        } else if(args.Matches("edit .+ .+")) {
+            if(!server.Aliases.TryGetValue(aliasName, out Alias alias)) return "Alias " + aliasName + " does not exist.";
+            alias.Command = args.Join(2, args.Length(), " ");
+            server.Serialize();
+            return "Command " + aliasName + " has been edited.";
+        } else if(args.Matches("del .+")) {
+            if(!server.Aliases.TryGetValue(aliasName, out Alias alias)) return "Alias " + aliasName + " does not exist.";
+            server.CustomCommands.Remove(aliasName);
+            server.Serialize();
+            return "Command " + aliasName + " has been removed.";
         }
 
         return null;
