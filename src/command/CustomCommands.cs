@@ -41,7 +41,7 @@ public class CounterCommand : TextCommand {
     public int Counter;
 
     public override string Execute(Server server, string author, Permission permission, Arguments args) {
-        if(args.Length() > 0) {
+        if(args.Length() > 0 && permission >= Permission.Moderator) {
             if(args.TryInt(0, out int newValue)) {
                 Counter = newValue;
             } else {
@@ -71,7 +71,7 @@ public class FractionCommand : TextCommand {
     public int Denominator;
 
     public override string Execute(Server server, string author, Permission permission, Arguments args) {
-        if(args.Length() > 0) {
+        if(args.Length() > 0 && permission >= Permission.Moderator) {
             if(args.Matches("setnumerator \\d+")) {
                 Numerator = args.Int(1);
             } else if(args.Matches("setdenominator \\d+")) {
@@ -103,7 +103,7 @@ public class TimerCommand : TextCommand {
     public int Interval;
 
     public override string Execute(Server server, string author, Permission permission, Arguments args) {
-        if(args.Length() > 0) {
+        if(args.Length() > 0 && permission >= Permission.Moderator) {
             if(args.TryInt(0, out int newValue)) {
                 Interval = newValue;
                 return "The interval of the timer-command " + Name + " has been set to " + newValue + " seconds.";

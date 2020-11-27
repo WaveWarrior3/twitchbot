@@ -9,10 +9,12 @@ public delegate string SystemCommandFn(Server server, string author, Permission 
 public class SystemCommand : Attribute {
 
     public string Name;
+    public Permission MinPermission;
     public int MinArguments;
 
-    public SystemCommand(string name, int minArguments = 0) {
+    public SystemCommand(string name, Permission minPermission = Permission.Chatter, int minArguments = 0) {
         Name = name;
+        MinPermission = minPermission;
         MinArguments = minArguments;
     }
 }
@@ -31,7 +33,7 @@ public struct Alias {
 
 public static class SystemCommandsImpl {
 
-    [SystemCommand("!command", 2)]
+    [SystemCommand("!command", Permission.Moderator, 2)]
     public static string Command(Server server, string author, Permission permission, Arguments args) {
         string commandName = args[1].ToLower();
         if(args.Matches("add .+ .+")) {
@@ -95,7 +97,7 @@ public static class SystemCommandsImpl {
         return null;
     }
 
-    [SystemCommand("!alias")]
+    [SystemCommand("!alias", Permission.Moderator, 2)]
     public static string Alias(Server server, string author, Permission permission, Arguments args) {
         string aliasName = args[1].ToLower();
         if(args.Matches("add .+ .+")) {
@@ -183,6 +185,7 @@ public static class SystemCommandsImpl {
 
     [SystemCommand("!src")]
     public static string Src(Server server, string author, Permission permission, Arguments args) {
+        // TODO: Caching
         if(!args.TryInt(args.Length() - 1, out int place)) {
             return "Correct Syntax: !src (game handle) (category) (place)";
         }
@@ -227,7 +230,7 @@ public static class SystemCommandsImpl {
 
     [SystemCommand("!quote")]
     public static string Quote(Server server, string author, Permission permission, Arguments args) {
-        if(args.Length() > 0) {
+        if(args.Length() > 0 && permission >= Permission.Moderator) {
             if(args[0].EqualsIgnoreCase("add")) {
                 if(!args.Matches("add .+ .+")) return "Correct Syntax: !quote add (quotee) (message)";
                 string quotee = args[1];
