@@ -18,8 +18,22 @@ public class Server {
     public List<Emote> Emotes = new List<Emote>();
     [JsonIgnore]
     public string TwitchChannelId = null;
+
     public bool StreamLive = false;
     public string LastStreamId = "";
+    public Dictionary<DateTime, StreamData> Statistics = new Dictionary<DateTime, StreamData>();
+
+    [JsonIgnore]
+    public StreamData CurrentStatistics {
+        get {
+            DateTime date = DateTime.Now.Date;
+            if(!Statistics.ContainsKey(date)) {
+                Statistics[date] = new StreamData();
+            }
+
+            return Statistics[date];
+        }
+    }
 
     public void Initialize() {
         CustomCommands = new Dictionary<string, TextCommand>(CustomCommands, StringComparer.OrdinalIgnoreCase);

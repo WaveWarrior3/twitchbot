@@ -280,4 +280,100 @@ public static class SystemCommandsImpl {
         int id = server.Quotes.IndexOf(quote) + 1;
         return "Quote #" + id + " by " + quote.Quotee + ": \"" + quote.Message + "\"";
     }
+
+    [SystemCommand("!choose", Permission.Chatter, 1)]
+    public static string Choose(Server server, string author, Permission permission, Arguments args) {
+        return Random.Next(args.Join(0, args.Length(), " ").Split("|"));
+    }
+
+    private static readonly string[] ConchshellAnswers = {
+        "It is certain.",
+        "Without a doubt.",
+        "Yes - definitely.",
+        "As I see it, yes.",
+        "Signs point to yes.",
+        "Ask again later.",
+        "Better not tell you now.",
+        "Cannot predict now.",
+        "Don't count on it.",
+        "My reply is no.",
+        "My sources say no.",
+        "Outlook not so good.",
+        "Very doubtful.",
+    };
+
+    [SystemCommand("!conchshell")]
+    public static string Conchshell(Server server, string author, Permission permission, Arguments args) {
+        return Random.Next(ConchshellAnswers);
+    }
+
+    [SystemCommand("!isredbar")]
+    public static string IsRedbar(Server server, string author, Permission permission, Arguments args) {
+        if(!args.Matches("\\d+/\\d+")) {
+            return "Correct Syntax: !isredbar (fraction)";
+        }
+
+        string[] splitArray = args[0].Split("/");
+        if(!(int.TryParse(splitArray[0], out int currentHp) && int.TryParse(splitArray[1], out int maxHp))) {
+            return "Correct Syntax: !isredbar (fraction)";
+        }
+
+        if(maxHp == 0) return "AngryVoHiYo";
+        bool redbar = currentHp * 48 / maxHp < 10;
+        return currentHp + "/" + maxHp + " is " + (redbar ? "" : "not ") + "red bar.";
+    }
+
+    [SystemCommand("!istorrent")]
+    public static string IsTorrent(Server server, string author, Permission permission, Arguments args) {
+        if(!args.Matches("\\d+/\\d+")) {
+            return "Correct Syntax: !istorrent (fraction)";
+        }
+
+        string[] splitArray = args[0].Split("/");
+        if(!(int.TryParse(splitArray[0], out int currentHp) && int.TryParse(splitArray[1], out int maxHp))) {
+            return "Correct Syntax: !istorrent (fraction)";
+        }
+
+        if(maxHp == 0) return "AngryVoHiYo";
+        bool torrent = currentHp <= maxHp / 3;
+        return currentHp + "/" + maxHp + " is " + (torrent ? "" : "not ") + "torrent.";
+    }
+
+    [SystemCommand("!isprime")]
+    public static string IsPrime(Server server, string author, Permission permission, Arguments args) {
+        if(!args.Matches("\\d+")) {
+            return "Correct Syntax: !isprime (number)";
+        }
+
+        int number = args.Int(0);
+        bool prime;
+
+        if(number <= 1) prime = false;
+        else if(number == 2) prime = true;
+        else if(number % 2 == 0) prime = false;
+        else {
+            int max = (int) Math.Floor(Math.Sqrt(number));
+            for(int i = 3; i < max; i += 2) {
+                if(number % i == 0) {
+                    prime = false;
+                    break;
+                }
+            }
+            prime = true;
+        }
+
+        return number + " is " + (prime ? "" : "not ") + "a prime number.";
+    }
+
+    [SystemCommand("!data")]
+    public static string Data(Server server, string author, Permission permission, Arguments args) {
+        DateTime date = DateTime.Now.Date;
+
+        if(!server.Statistics.ContainsKey(date)) return "No data has been collected for today.";
+
+        StreamData data = server.Statistics[date];
+        float viewerAverage = (float) data.SumViewers / (float) data.NumSamples;
+
+        return string.Format("Average viewers: {0}, Peak viewers: {1}, Bits donated: {2}", viewerAverage, data.PeakViewers, data.BitsDonated);
+    }
 }

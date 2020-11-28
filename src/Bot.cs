@@ -16,6 +16,20 @@ public struct Keys {
     public string SRCAuthKey;
 }
 
+public class StreamData {
+
+    public int NumSamples;
+
+    public int SumViewers;
+    public int PeakViewers;
+
+    public int BitsDonated;
+
+    public int NewSubs;
+    public int Resubs;
+    public int GiftedSubs;
+}
+
 [AttributeUsage(AttributeTargets.Method, Inherited = false)]
 public class TimedEvent : Attribute {
 
@@ -114,6 +128,10 @@ public static class Bot {
 
         Server server = GetServerByIRCRoom(e.Channel);
 
+        if(e.Parameters.ContainsKey("bits")) {
+            server.CurrentStatistics.BitsDonated += Convert.ToInt32(e.Parameters["bits"]);
+        }
+
         string[] badges = e.Parameters["badges"].Split(",");
         Permission permission = Permission.Chatter;
         if(badges.Any(badge => badge.StartsWith("broadcaster"))) {
@@ -138,8 +156,9 @@ public static class Bot {
             foreach(string set in emoteSets) {
                 server.Emotes.AddRange(TwitchEmotes.GetSetEmotes(Convert.ToInt32(set)));
             }
-            server.Emotes.AddRange(FrankerFaceZ.GetChannelEmotes(e.Channel));
             server.Emotes.AddRange(BetterTwitchTV.GetGlobalEmotes());
+            List<Emote> ffz = FrankerFaceZ.GetChannelEmotes(e.Channel);
+            if(ffz != null) server.Emotes.AddRange(ffz);
             //server.Emotes.AddRange(BetterTwitchTV.GetChannelEmotes(server.TwitchChannelId));
         }
     }
@@ -171,11 +190,15 @@ public static class Bot {
 
             if(online) {
                 server.LastStreamId = stream.id;
+                StreamData data = server.CurrentStatistics;
+                data.NumSamples++;
+                data.SumViewers += stream.view_count;
+                data.PeakViewers = Math.Max(data.PeakViewers, stream.view_count);
             }
         }
     }
 
-    [TimedEvent(10)]
+    [TimedEvent(5)]
     public static void GlobalSerialization(ulong time) {
         foreach(Server server in Servers) {
             server.Serialize();

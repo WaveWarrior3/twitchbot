@@ -52,7 +52,6 @@ public class CounterCommand : TextCommand {
             }
         }
 
-        server.Serialize();
         return FormatMessage(Message, server, author, permission, args);
     }
 
