@@ -2,6 +2,7 @@ using System;
 using System.Xml;
 using System.Linq;
 using System.Collections.Generic;
+using org.mariuszgromada.math.mxparser;
 
 public delegate string SystemCommandFn(Server server, string author, Permission permission, Arguments args);
 
@@ -375,5 +376,14 @@ public static class SystemCommandsImpl {
         float viewerAverage = (float) data.SumViewers / (float) data.NumSamples;
 
         return string.Format("Average viewers: {0}, Peak viewers: {1}, Bits donated: {2}", viewerAverage, data.PeakViewers, data.BitsDonated);
+    }
+
+    [SystemCommand("!expr")]
+    public static string Expr(Server server, string author, Permission permission, Arguments args) {
+        if(args.Length() == 0) return "Correct Syntax: !expr (math expression)";
+        Expression expr = new Expression(args.Join(0, args.Length(), " "));
+        if(!expr.checkSyntax()) return "Invalid expression.";
+
+        return expr.calculate().ToString();
     }
 }
