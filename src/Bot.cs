@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.IO;
 using Newtonsoft.Json;
 
-public struct Keys {
+public class Keys {
 
     public string IRCPassword;
     public string TwitchAuthKey;
@@ -224,13 +224,37 @@ public static class Bot {
             return;
         }
 
+        if(!server.Users.ContainsKey(author)) {
+            server.Users[author] = new User {
+                SlotsWins = 0,
+                CommandTimeStamps = new Dictionary<string, DateTime>(),
+            };
+        }
+
+        User user = server.Users[author];
+
+        double timeSinceLastUsage = DateTime.Now.Subtract(user.CommandTimeStamps.GetValueOrDefault(command, new DateTime(0))).TotalSeconds;
+        int commandCooldown = server.CommandCooldowns.GetValueOrDefault(command, 0);
+        double cooldownRemaining = commandCooldown - timeSinceLastUsage;
+
+        if(cooldownRemaining > 0) {
+            IRC.SendPrivMsg(server.IRCChannelName, "/w " + author + " Cooldown: " + cooldownRemaining + "s");
+            return;
+        }
+
+        bool setCooldown = true;
+
         if(SystemCommands.TryGetValue(command, out (SystemCommand Metadata, SystemCommandFn Function) systemCommand)) {
             if(systemCommand.Metadata.MinArguments > args.Length()) return;
-            IRC.SendPrivMsg(server.IRCChannelName, SystemCommands[command].Function(server, author, permission, args));
+            IRC.SendPrivMsg(server.IRCChannelName, SystemCommands[command].Function(server, user, author, permission, args, ref setCooldown));
         }
 
         if(server.CustomCommands.TryGetValue(command, out TextCommand textCommand)) {
             IRC.SendPrivMsg(server.IRCChannelName, textCommand.Execute(server, author, permission, args));
+        }
+
+        if(setCooldown) {
+            user.CommandTimeStamps[command] = DateTime.Now;
         }
     }
 }

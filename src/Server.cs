@@ -4,24 +4,32 @@ using System.IO;
 using Newtonsoft.Json;
 using System.Collections.Generic;
 
+public class User {
+
+    public Dictionary<string, DateTime> CommandTimeStamps;
+    public int SlotsWins;
+}
+
 public class Server {
 
     public string Name;
     public string IRCChannelName;
+
     public Dictionary<string, TextCommand> CustomCommands = new Dictionary<string, TextCommand>();
     public Dictionary<string, Alias> Aliases = new Dictionary<string, Alias>();
     public List<Quote> Quotes = new List<Quote>();
+    public Dictionary<string, int> CommandCooldowns = new Dictionary<string, int>();
+    public Dictionary<string, User> Users = new Dictionary<string, User>();
+    public Dictionary<DateTime, StreamData> Statistics = new Dictionary<DateTime, StreamData>();
 
     public int NumSlotsEmotes = 16;
+    public bool StreamLive = false;
+    public string LastStreamId = "";
 
     [JsonIgnore]
     public List<Emote> Emotes = new List<Emote>();
     [JsonIgnore]
     public string TwitchChannelId = null;
-
-    public bool StreamLive = false;
-    public string LastStreamId = "";
-    public Dictionary<DateTime, StreamData> Statistics = new Dictionary<DateTime, StreamData>();
 
     [JsonIgnore]
     public StreamData CurrentStatistics {
@@ -36,8 +44,11 @@ public class Server {
     }
 
     public void Initialize() {
+        // Initalize all dictionaries to be case insensitive.
         CustomCommands = new Dictionary<string, TextCommand>(CustomCommands, StringComparer.OrdinalIgnoreCase);
         Aliases = new Dictionary<string, Alias>(Aliases, StringComparer.OrdinalIgnoreCase);
+        CommandCooldowns = new Dictionary<string, int>(CommandCooldowns, StringComparer.OrdinalIgnoreCase);
+        Users = new Dictionary<string, User>(Users, StringComparer.OrdinalIgnoreCase);
         if(IRCChannelName != null) {
             TwitchChannelId = Twitch.GetUser(IRCChannelName).id;
         }

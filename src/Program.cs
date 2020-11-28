@@ -10,7 +10,7 @@ public class Program {
 
     public static void Main(string[] args) {
         CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
-        RegisterServer("chumbanka");
+        RegisterServer("stringflow77");
         Bot.Start();
     }
 

@@ -5,7 +5,7 @@ using System.Linq;
 using System.Collections.Generic;
 using org.mariuszgromada.math.mxparser;
 
-public delegate string SystemCommandFn(Server server, string author, Permission permission, Arguments args);
+public delegate string SystemCommandFn(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown);
 
 [AttributeUsage(AttributeTargets.Method, Inherited = false)]
 public class SystemCommand : Attribute {
@@ -21,13 +21,13 @@ public class SystemCommand : Attribute {
     }
 }
 
-public struct Quote {
+public class Quote {
 
     public string Quotee;
     public string Message;
 }
 
-public struct Alias {
+public class Alias {
 
     public string Name;
     public string Command;
@@ -36,7 +36,7 @@ public struct Alias {
 public static class SystemCommandsImpl {
 
     [SystemCommand("!command", Permission.Moderator, 2)]
-    public static string Command(Server server, string author, Permission permission, Arguments args) {
+    public static string Command(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         string commandName = args[1].ToLower();
         if(args.Matches("add .+ .+")) {
             if(server.IsCommandNameInUse(commandName, out CommandType type)) return "The name " + commandName + " is already in by " + type.Format() + ".";
@@ -96,11 +96,12 @@ public static class SystemCommandsImpl {
             return "Command " + commandName + " has been transformed to a " + type + "-command.";
         }
 
+        setCooldown = false;
         return null;
     }
 
     [SystemCommand("!alias", Permission.Moderator, 2)]
-    public static string Alias(Server server, string author, Permission permission, Arguments args) {
+    public static string Alias(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         string aliasName = args[1].ToLower();
         if(args.Matches("add .+ .+")) {
             if(server.IsCommandNameInUse(aliasName, out CommandType type)) return "The name " + aliasName + " is already in by " + type.Format() + ".";
@@ -113,23 +114,24 @@ public static class SystemCommandsImpl {
         } else if(args.Matches("edit .+ .+")) {
             if(!server.Aliases.TryGetValue(aliasName, out Alias alias)) return "Alias " + aliasName + " does not exist.";
             alias.Command = args.Join(2, args.Length(), " ");
-            return "Command " + aliasName + " has been edited.";
+            return "Alias " + aliasName + " has been edited.";
         } else if(args.Matches("del .+")) {
             if(!server.Aliases.TryGetValue(aliasName, out Alias alias)) return "Alias " + aliasName + " does not exist.";
             server.CustomCommands.Remove(aliasName);
-            return "Command " + aliasName + " has been removed.";
+            return "Alias " + aliasName + " has been removed.";
         }
 
+        setCooldown = false;
         return null;
     }
 
     [SystemCommand("!test")]
-    public static string Test(Server server, string author, Permission permission, Arguments args) {
+    public static string Test(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         return "Your connection is still working.";
     }
 
     [SystemCommand("!roll")]
-    public static string Roll(Server server, string author, Permission permission, Arguments args) {
+    public static string Roll(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         int upperBound = 100;
         if(args.Length() > 0) {
             if(!args.Matches("\\d+")) return "Correct Syntax: !roll (upper bound)";
@@ -139,16 +141,18 @@ public static class SystemCommandsImpl {
     }
 
     [SystemCommand("!slots")]
-    public static string Slots(Server server, string author, Permission permission, Arguments args) {
+    public static string Slots(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         if((args.Matches("emotes \\d+") || args.Matches("setemotes \\d+")) && permission >= Permission.Moderator) {
             int newEmotes = args.Int(1);
             if(newEmotes < 1) return "The number of emotes must be at least 1.";
 
             server.NumSlotsEmotes = newEmotes;
+            setCooldown = false;
             return "Slots use a pool of " + newEmotes + " emotes now (1/" + (int) (Math.Pow(newEmotes, 2)) + " chance to win).";
         }
 
         if(args.Matches("odds")) {
+            setCooldown = false;
             return "1/" + (int) (Math.Pow(server.NumSlotsEmotes, 2)) + " chance to win.";
         }
 
@@ -164,6 +168,7 @@ public static class SystemCommandsImpl {
 
         Bot.IRC.SendPrivMsg(server.IRCChannelName, string.Join(" | ", emotes));
         if(numUniques == 1) {
+            user.SlotsWins++;
             Bot.IRC.SendPrivMsg(server.IRCChannelName, author + " has won the slots! " + emotes[0]);
         }
 
@@ -171,7 +176,7 @@ public static class SystemCommandsImpl {
     }
 
     [SystemCommand("!uptime")]
-    public static string Uptime(Server server, string author, Permission permission, Arguments args) {
+    public static string Uptime(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         TwitchStream stream = Twitch.GetStream(server.IRCChannelName);
         if(stream == null) return server.IRCChannelName + " is not live.";
 
@@ -186,7 +191,7 @@ public static class SystemCommandsImpl {
     }
 
     [SystemCommand("!src")]
-    public static string Src(Server server, string author, Permission permission, Arguments args) {
+    public static string Src(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         // TODO: Caching
         if(!args.TryInt(args.Length() - 1, out int place)) {
             return "Correct Syntax: !src (game handle) (category) (place)";
@@ -231,7 +236,7 @@ public static class SystemCommandsImpl {
     }
 
     [SystemCommand("!quote")]
-    public static string Quote(Server server, string author, Permission permission, Arguments args) {
+    public static string Quote(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         if(args.Length() > 0 && permission >= Permission.Moderator) {
             if(args[0].EqualsIgnoreCase("add")) {
                 if(!args.Matches("add .+ .+")) return "Correct Syntax: !quote add (quotee) (message)";
@@ -284,7 +289,7 @@ public static class SystemCommandsImpl {
     }
 
     [SystemCommand("!choose", Permission.Chatter, 1)]
-    public static string Choose(Server server, string author, Permission permission, Arguments args) {
+    public static string Choose(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         return Random.Next(args.Join(0, args.Length(), " ").Split("|"));
     }
 
@@ -305,12 +310,12 @@ public static class SystemCommandsImpl {
     };
 
     [SystemCommand("!conchshell")]
-    public static string Conchshell(Server server, string author, Permission permission, Arguments args) {
+    public static string Conchshell(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         return Random.Next(ConchshellAnswers);
     }
 
     [SystemCommand("!isredbar")]
-    public static string IsRedbar(Server server, string author, Permission permission, Arguments args) {
+    public static string IsRedbar(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         if(!args.Matches("\\d+/\\d+")) {
             return "Correct Syntax: !isredbar (fraction)";
         }
@@ -326,7 +331,7 @@ public static class SystemCommandsImpl {
     }
 
     [SystemCommand("!istorrent")]
-    public static string IsTorrent(Server server, string author, Permission permission, Arguments args) {
+    public static string IsTorrent(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         if(!args.Matches("\\d+/\\d+")) {
             return "Correct Syntax: !istorrent (fraction)";
         }
@@ -342,7 +347,7 @@ public static class SystemCommandsImpl {
     }
 
     [SystemCommand("!isprime")]
-    public static string IsPrime(Server server, string author, Permission permission, Arguments args) {
+    public static string IsPrime(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         if(!args.Matches("\\d+")) {
             return "Correct Syntax: !isprime (number)";
         }
@@ -368,7 +373,7 @@ public static class SystemCommandsImpl {
     }
 
     [SystemCommand("!data")]
-    public static string Data(Server server, string author, Permission permission, Arguments args) {
+    public static string Data(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         DateTime date = DateTime.Now.Date;
 
         if(!server.Statistics.ContainsKey(date)) return "No data has been collected for today.";
@@ -380,7 +385,7 @@ public static class SystemCommandsImpl {
     }
 
     [SystemCommand("!expr")]
-    public static string Expr(Server server, string author, Permission permission, Arguments args) {
+    public static string Expr(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         if(args.Length() == 0) return "Correct Syntax: !expr (math expression)";
         Expression expr = new Expression(args.Join(0, args.Length(), " "));
         if(!expr.checkSyntax()) return "Invalid expression.";
@@ -389,16 +394,48 @@ public static class SystemCommandsImpl {
     }
 
     [SystemCommand("!winner")]
-    public static string Winner(Server server, string author, Permission permission, Arguments args) {
+    public static string Winner(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         Bot.IRC.SendPrivMsg(server.IRCChannelName, "And the winning user is...");
         Thread.Sleep(2500);
         return Random.Next(Twitch.GetChatters(server.IRCChannelName)) + "!";
     }
 
     [SystemCommand("!loser")]
-    public static string Loser(Server server, string author, Permission permission, Arguments args) {
+    public static string Loser(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         Bot.IRC.SendPrivMsg(server.IRCChannelName, "And the losing user is...");
         Thread.Sleep(2500);
         return Random.Next(Twitch.GetChatters(server.IRCChannelName)) + "!";
+    }
+
+    [SystemCommand("!cooldown")]
+    public static string Cooldown(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
+        if(args[0].EqualsIgnoreCase("set") && permission >= Permission.Moderator) {
+            if(!args.Matches("set .+ \\d+")) return "Correct Syntax: !cooldown set (command) (cooldown in seconds)";
+            string command = args[1];
+            int cooldown = args.Int(2);
+            if(!server.CustomCommands.ContainsKey(command) && !Bot.SystemCommands.ContainsKey(command)) return "A command with the name " + command + " was not found.";
+            server.CommandCooldowns[command] = cooldown;
+            return "The cooldown for " + command + " has been set to " + cooldown + " seconds.";
+        } else if(args.Length() > 0) {
+            string command = args[0];
+            if(!server.CustomCommands.ContainsKey(command) && !Bot.SystemCommands.ContainsKey(command)) return "A command with the name " + command + " was not found.";
+            return "The cooldown for " + command + " is currently set to " + server.CommandCooldowns.GetValueOrDefault(command, 0) + " seconds.";
+        }
+
+        return null;
+    }
+
+    [SystemCommand("!liftcooldown", Permission.Moderator)]
+    public static string LiftCooldown(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
+        if(!args.Matches(".+ .+")) return "Correct Syntax: !liftcooldown (user) (command name)";
+
+        string username = args[0];
+        string command = args[1];
+
+        if(!server.Users.ContainsKey(username)) return "User " + username + " was not found.";
+        if(!server.CustomCommands.ContainsKey(command) && !Bot.SystemCommands.ContainsKey(command)) return "A command with the name " + command + " was not found.";
+
+        server.Users[username].CommandTimeStamps[command] = new DateTime(0);
+        return "The " + command + " cooldown for " + username + " has been lifted.";
     }
 }
