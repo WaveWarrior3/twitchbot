@@ -190,9 +190,20 @@ public static class SystemCommandsImpl {
         return "Uptime: " + hours + " " + minutes + " " + seconds;
     }
 
+    public static Dictionary<string, string> SrcCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
     [SystemCommand("!src")]
     public static string Src(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
-        // TODO: Caching
+        if(args.Matches("clear")) {
+            SrcCache.Clear();
+            return "Cache cleared.";
+        }
+
+        string query = args.Join(0, args.Length(), " ");
+        if(SrcCache.ContainsKey(query)) {
+            return SrcCache[query];
+        }
+
         if(!args.TryInt(args.Length() - 1, out int place)) {
             return "Correct Syntax: !src (game handle) (category) (place)";
         }
@@ -221,18 +232,18 @@ public static class SystemCommandsImpl {
 
         SRCRun run = runs[0];
         TimeSpan timestamp = XmlConvert.ToTimeSpan(run.Time);
-        string formattedTime = "";
-        if(timestamp.Hours > 0) formattedTime += timestamp.Hours + ":";
-        if(timestamp.Minutes > 0 || timestamp.Hours > 0) formattedTime += timestamp.Minutes + ":";
-        if(timestamp.Seconds > 0 || timestamp.Minutes > 0 || timestamp.Hours > 0) formattedTime += timestamp.Seconds;
-        if(timestamp.Milliseconds > 0) formattedTime += "." + timestamp.Milliseconds;
+        string formattedTime = timestamp.ToString("g");
+        string result = "";
 
         if(runs.Count == 1) {
-            return place + StringFunctions.PlaceEnding(place) + " place in " + game.Name + " " + category.Name + " is held by " + run.Player.Name + " with a time of " + formattedTime + " | Video: " + run.VideoLink;
+            result = place + StringFunctions.PlaceEnding(place) + " place in " + game.Name + " " + category.Name + " is held by " + run.Player.Name + " with a time of " + formattedTime + " | Video: " + run.VideoLink;
         } else {
             runs.Last().Player.Name = "and " + runs.Last().Player.Name;
-            return place + StringFunctions.PlaceEnding(place) + " place in " + game.Name + " " + category.Name + " is a " + runs.Count + "-way tie between " + string.Join(", ", runs.Select(run => run.Player.Name)) + " with a time of " + formattedTime;
+            result = place + StringFunctions.PlaceEnding(place) + " place in " + game.Name + " " + category.Name + " is a " + runs.Count + "-way tie between " + string.Join(", ", runs.Select(run => run.Player.Name)) + " with a time of " + formattedTime;
         }
+
+        SrcCache[query] = result;
+        return result;
     }
 
     [SystemCommand("!quote")]
