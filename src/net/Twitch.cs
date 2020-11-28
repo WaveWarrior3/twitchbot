@@ -1,4 +1,5 @@
 using Newtonsoft.Json;
+using System.Collections.Generic;
 
 public class TwitchUser {
 
@@ -52,6 +53,20 @@ public static class Twitch {
         }
 
         return JsonConvert.DeserializeObject<TwitchStream>(data[0].ToString());
+    }
+
+    public static List<string> GetChatters(string channelName) {
+        if(!Http.Get(out HttpResponse response, "http://tmi.twitch.tv/group/user/" + channelName + "/chatters")) {
+            return null;
+        }
+
+        dynamic data = response.Unpack();
+        List<string> result = new List<string>();
+        foreach(dynamic arr in data.chatters) {
+            result.AddRange(arr.Value.ToObject<string[]>());
+        }
+
+        return result;
     }
 
     private static bool MakeAuthorizedRequest(string url, out dynamic data) {

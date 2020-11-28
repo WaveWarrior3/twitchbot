@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Xml;
 using System.Linq;
 using System.Collections.Generic;
@@ -385,5 +386,19 @@ public static class SystemCommandsImpl {
         if(!expr.checkSyntax()) return "Invalid expression.";
 
         return expr.calculate().ToString();
+    }
+
+    [SystemCommand("!winner")]
+    public static string Winner(Server server, string author, Permission permission, Arguments args) {
+        Bot.IRC.SendPrivMsg(server.IRCChannelName, "And the winning user is...");
+        Thread.Sleep(2500);
+        return Random.Next(Twitch.GetChatters(server.IRCChannelName)) + "!";
+    }
+
+    [SystemCommand("!loser")]
+    public static string Loser(Server server, string author, Permission permission, Arguments args) {
+        Bot.IRC.SendPrivMsg(server.IRCChannelName, "And the losing user is...");
+        Thread.Sleep(2500);
+        return Random.Next(Twitch.GetChatters(server.IRCChannelName)) + "!";
     }
 }
