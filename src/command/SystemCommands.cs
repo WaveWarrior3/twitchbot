@@ -291,6 +291,12 @@ public static class SystemCommandsImpl {
 
         if(server.Quotes.Count == 0) return "No quotes have been added, yet.";
 
+        if(args.Matches("\\d+")) {
+            int quoteNumber = args.Int(0) - 1;
+            if(quoteNumber < 0 || quoteNumber >= server.Quotes.Count) return "Quote #" + args[1] + " does not exist.";
+            return FormatQuote(server, server.Quotes[quoteNumber]);
+        }
+
         return FormatQuote(server, Random.Next(server.Quotes));
     }
 
@@ -404,14 +410,14 @@ public static class SystemCommandsImpl {
         return expr.calculate().ToString();
     }
 
-    [SystemCommand("!winner")]
+    [SystemCommand("!winner", Permission.Moderator)]
     public static string Winner(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         Bot.IRC.SendPrivMsg(server.IRCChannelName, "And the winning user is...");
         Thread.Sleep(2500);
         return Random.Next(Twitch.GetChatters(server.IRCChannelName)) + "!";
     }
 
-    [SystemCommand("!loser")]
+    [SystemCommand("!loser", Permission.Moderator)]
     public static string Loser(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         Bot.IRC.SendPrivMsg(server.IRCChannelName, "And the losing user is...");
         Thread.Sleep(2500);

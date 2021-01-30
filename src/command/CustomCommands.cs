@@ -90,7 +90,7 @@ public class FractionCommand : TextCommand {
         message = base.FormatMessage(message, server, author, permission, args);
         message = message.Replace("%numerator%", Numerator.ToString());
         message = message.Replace("%denominator%", Denominator.ToString());
-        message = message.Replace("%fraction%", ((float) Numerator / (float) Denominator).ToString());
+        message = message.Replace("%fraction%", ((float) Numerator / (float) Denominator * 100.0f).ToString());
         return message;
     }
 }

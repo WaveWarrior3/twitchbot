@@ -26,10 +26,10 @@ public class IRCConnection : IDisposable {
     public delegate void OnEvent(IRCEvent e);
 
     public void Dispose() {
-        IRC.Dispose();
-        Stream.Dispose();
         Reader.Dispose();
         Writer.Dispose();
+        Stream.Dispose();
+        IRC.Dispose();
     }
 
     public void EstablishConnection() {
@@ -40,8 +40,8 @@ public class IRCConnection : IDisposable {
 
         IRC = new TcpClient(Server, Port);
         Stream = IRC.GetStream();
-        Reader = new StreamReader(Stream);
         Writer = new StreamWriter(Stream);
+        Reader = new StreamReader(Stream);
         Writer.AutoFlush = true;
 
         EventKeywords = new List<string>();
@@ -69,38 +69,38 @@ public class IRCConnection : IDisposable {
 
             Connected = true;
 
-            while(true) {
-                string line;
-                string[] splitArray = null;
-                Dictionary<string, string> parameters = null;
-                while((line = Reader.ReadLine()) != null) {
-                    if(EventKeywords.Any(keyword => line.Contains(keyword))) {
-                        splitArray = line.Split(" ");
-                        parameters = splitArray[0].Split(";").ToDictionary(substring => substring.Split("=")[0], substring => substring.Split("=")[1]);
-                    }
+            string line;
+            string[] splitArray = null;
+            Dictionary<string, string> parameters = null;
+            while((line = Reader.ReadLine()) != null) {
+                if(EventKeywords.Any(keyword => line.Contains(keyword))) {
+                    splitArray = line.Split(" ");
+                    parameters = splitArray[0].Split(";").ToDictionary(substring => substring.Split("=")[0], substring => substring.Split("=")[1]);
+                }
 
-                    if(line.Contains("USERSTATE")) {
-                        IRCUserStateEvent stateEvent = new IRCUserStateEvent() {
-                            Parameters = parameters,
-                            Channel = splitArray[3].Substring(1),
-                        };
-                        eventCallback(stateEvent);
-                    }
+                if(line.Contains("USERSTATE")) {
+                    IRCUserStateEvent stateEvent = new IRCUserStateEvent() {
+                        Parameters = parameters,
+                        Channel = splitArray[3].Substring(1),
+                    };
+                    eventCallback(stateEvent);
+                }
 
-                    if(line.Contains("PRIVMSG")) {
-                        IRCPrivMsgEvent messageEvent = new IRCPrivMsgEvent() {
-                            Parameters = parameters,
-                            Author = splitArray[1].Until("!").Substring(1),
-                            Channel = splitArray[3].Substring(1),
-                        };
-                        messageEvent.Message = line.After("PRIVMSG #" + messageEvent.Channel + " :");
-                        eventCallback(messageEvent);
-                    }
+                if(line.Contains("PRIVMSG")) {
+                    IRCPrivMsgEvent messageEvent = new IRCPrivMsgEvent() {
+                        Parameters = parameters,
+                        Author = splitArray[1].Until("!").Substring(1),
+                        Channel = splitArray[3].Substring(1),
+                    };
+                    messageEvent.Message = line.After("PRIVMSG #" + messageEvent.Channel + " :");
+                    eventCallback(messageEvent);
                 }
             }
         } catch(Exception) {
-            Debug.Warning("IRC Connection lost!");
         }
+
+        Connected = false;
+        Debug.Warning("IRC Connection lost!");
     }
 
     public void SendPrivMsg(string channel, string message) {

@@ -105,7 +105,6 @@ public static class Bot {
                         }
                     }
                 }
-
                 Thread.Sleep(1000);
                 time++;
             }
@@ -115,11 +114,15 @@ public static class Bot {
 
     public static void OnEvent(Event e) {
         Task.Run(() => {
-            EventDispatcher dispatcher = new EventDispatcher {
-                Event = e
-            };
-            dispatcher.Dispatch<IRCPrivMsgEvent>(OnIRCMessage);
-            dispatcher.Dispatch<IRCUserStateEvent>(OnIRCState);
+            try {
+                EventDispatcher dispatcher = new EventDispatcher {
+                    Event = e
+                };
+                dispatcher.Dispatch<IRCPrivMsgEvent>(OnIRCMessage);
+                dispatcher.Dispatch<IRCUserStateEvent>(OnIRCState);
+            } catch(Exception e) {
+                Console.WriteLine(e.ToString());
+            }
         });
     }
 
@@ -243,17 +246,21 @@ public static class Bot {
         }
 
         bool setCooldown = true;
+        bool commandExecuted = false;
 
         if(SystemCommands.TryGetValue(command, out (SystemCommand Metadata, SystemCommandFn Function) systemCommand)) {
             if(systemCommand.Metadata.MinArguments > args.Length()) return;
+            if(systemCommand.Metadata.MinPermission > permission) return;
             IRC.SendPrivMsg(server.IRCChannelName, SystemCommands[command].Function(server, user, author, permission, args, ref setCooldown));
+            commandExecuted = true;
         }
 
         if(server.CustomCommands.TryGetValue(command, out TextCommand textCommand)) {
             IRC.SendPrivMsg(server.IRCChannelName, textCommand.Execute(server, author, permission, args));
+            commandExecuted = true;
         }
 
-        if(setCooldown) {
+        if(setCooldown && commandExecuted && permission != Permission.Streamer) {
             user.CommandTimeStamps[command] = DateTime.Now;
         }
     }
