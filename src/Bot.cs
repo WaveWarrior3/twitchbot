@@ -1,11 +1,11 @@
 using System;
 using System.Linq;
-using System.Reflection;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
 using Newtonsoft.Json;
+using Discord.WebSocket;
 
 public class Keys {
 
@@ -14,6 +14,7 @@ public class Keys {
     public string TwitchClientID;
     public string TwitchSecret;
     public string SRCAuthKey;
+    public string DiscordToken;
 }
 
 public class StreamData {
@@ -38,12 +39,17 @@ public class TimedEvent : Attribute {
     public TimedEvent(int seconds) => Seconds = seconds;
 }
 
+public delegate void SendMessageCallback(string message);
+
 public static class Bot {
 
     public static Keys Keys;
 
     public static IRCConnection IRC;
     public static Thread IRCThread;
+
+    public static DiscordClient Discord;
+    public static Thread DiscordThread;
 
     public static Dictionary<string, (SystemCommand Metadata, SystemCommandFn Function)> SystemCommands;
     public static List<Server> Servers = new List<Server>();
@@ -59,6 +65,7 @@ public static class Bot {
 
         FindSystemCommands();
         StartIRCThread();
+        StartDiscord();
         StartTimedEvents();
     }
 
@@ -92,6 +99,15 @@ public static class Bot {
         IRCThread.Start();
     }
 
+    public static void StartDiscord() {
+        IRCThread = new Thread(() => {
+            Discord = new DiscordClient();
+            Discord.ConnectAsync(OnEvent, Keys.DiscordToken).GetAwaiter().GetResult();
+            Task.Delay(Timeout.Infinite);
+        });
+        IRCThread.Start();
+    }
+
     public static void StartTimedEvents() {
         var timedEvents = Debug.FindMethodsWithAttribute<TimedEvent>();
 
@@ -120,6 +136,7 @@ public static class Bot {
                 };
                 dispatcher.Dispatch<IRCPrivMsgEvent>(OnIRCMessage);
                 dispatcher.Dispatch<IRCUserStateEvent>(OnIRCState);
+                dispatcher.Dispatch<DiscordMessageReceivedEvent>(OnDiscordMessage);
             } catch(Exception e) {
                 Console.WriteLine(e.ToString());
             }
@@ -147,7 +164,7 @@ public static class Bot {
             permission = Permission.Subscriber;
         }
 
-        ExecuteCommand(e.Message, server, e.Author, permission);
+        ExecuteTwitchCommand(e.Message, server, e.Author, permission);
     }
 
     public static void OnIRCState(IRCUserStateEvent e) {
@@ -166,6 +183,17 @@ public static class Bot {
         }
     }
 
+    public static void OnDiscordMessage(DiscordMessageReceivedEvent e) {
+        Permission permission = Permission.Chatter;
+        if(e.Author.GuildPermissions.Administrator) {
+            permission = Permission.Streamer;
+        } else if(e.Author.GuildPermissions.BanMembers) {
+            permission = Permission.Moderator;
+        }
+
+        ExecuteDiscordCommand(e.Message.Channel, e.Message.Content, GetServerByDiscordGuild(e.Channel.Guild.Id), e.Author.Username, permission);
+    }
+
     [TimedEvent(1)]
     public static void GlobalTimerCommandsUpdate(ulong time) {
         foreach(Server server in Servers) {
@@ -173,7 +201,7 @@ public static class Bot {
                 if(command is TimerCommand) {
                     TimerCommand timerCommand = (TimerCommand) command;
                     if(time % (ulong) timerCommand.Interval == 0) {
-                        ExecuteCommand(command.Name, server, IRC.Nick, Permission.Moderator);
+                        ExecuteTwitchCommand(command.Name, server, IRC.Nick, Permission.Moderator);
                     }
                 }
             }
@@ -213,7 +241,19 @@ public static class Bot {
         return Servers.Find(s => s.IRCChannelName.ToLower() == name);
     }
 
-    public static void ExecuteCommand(string message, Server server, string author, Permission permission) {
+    public static Server GetServerByDiscordGuild(ulong id) {
+        return Servers.Find(s => s.DiscordGuildId == id);
+    }
+
+    public static void ExecuteTwitchCommand(string message, Server server, string author, Permission permission) {
+        ExecuteCommand(ChannelType.Twitch, msg => IRC.SendPrivMsg(server.IRCChannelName, msg), message, server, author, permission);
+    }
+
+    public static void ExecuteDiscordCommand(ISocketMessageChannel channel, string message, Server server, string author, Permission permission) {
+        ExecuteCommand(ChannelType.Discord, msg => Discord.SendMesssage(channel, msg), message, server, author, permission);
+    }
+
+    public static void ExecuteCommand(ChannelType channelType, SendMessageCallback messageCallback, string message, Server server, string author, Permission permission) {
         string[] splitArray = message.Split(" ");
         string command = splitArray[0].ToLower();
         int firstSpace = message.IndexOf(" ");
@@ -223,7 +263,7 @@ public static class Bot {
         };
 
         if(server.Aliases.TryGetValue(command, out Alias alias)) {
-            ExecuteCommand(alias.Command, server, author, permission);
+            ExecuteCommand(channelType, messageCallback, alias.Command, server, author, permission);
             return;
         }
 
@@ -241,7 +281,9 @@ public static class Bot {
         double cooldownRemaining = commandCooldown - timeSinceLastUsage;
 
         if(cooldownRemaining > 0) {
-            IRC.SendPrivMsg(server.IRCChannelName, "/w " + author + " Cooldown: " + cooldownRemaining + "s");
+            if(channelType == ChannelType.Twitch) {
+                IRC.SendPrivMsg(server.IRCChannelName, "/w " + author + " Cooldown: " + cooldownRemaining + "s");
+            }
             return;
         }
 
@@ -251,12 +293,13 @@ public static class Bot {
         if(SystemCommands.TryGetValue(command, out (SystemCommand Metadata, SystemCommandFn Function) systemCommand)) {
             if(systemCommand.Metadata.MinArguments > args.Length()) return;
             if(systemCommand.Metadata.MinPermission > permission) return;
-            IRC.SendPrivMsg(server.IRCChannelName, SystemCommands[command].Function(server, user, author, permission, args, ref setCooldown));
+            if((systemCommand.Metadata.AllowedChannelTypes & channelType) == 0) return;
+            messageCallback(SystemCommands[command].Function(messageCallback, server, user, author, permission, args, ref setCooldown));
             commandExecuted = true;
         }
 
         if(server.CustomCommands.TryGetValue(command, out TextCommand textCommand)) {
-            IRC.SendPrivMsg(server.IRCChannelName, textCommand.Execute(server, author, permission, args));
+            messageCallback(textCommand.Execute(messageCallback, server, author, permission, args));
             commandExecuted = true;
         }
 

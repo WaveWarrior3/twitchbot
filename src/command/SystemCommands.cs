@@ -5,7 +5,7 @@ using System.Linq;
 using System.Collections.Generic;
 using org.mariuszgromada.math.mxparser;
 
-public delegate string SystemCommandFn(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown);
+public delegate string SystemCommandFn(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown);
 
 [AttributeUsage(AttributeTargets.Method, Inherited = false)]
 public class SystemCommand : Attribute {
@@ -13,11 +13,13 @@ public class SystemCommand : Attribute {
     public string Name;
     public Permission MinPermission;
     public int MinArguments;
+    public ChannelType AllowedChannelTypes;
 
-    public SystemCommand(string name, Permission minPermission = Permission.Chatter, int minArguments = 0) {
+    public SystemCommand(string name, Permission minPermission = Permission.Chatter, int minArguments = 0, ChannelType allowedChannelTypes = ChannelType.All) {
         Name = name;
         MinPermission = minPermission;
         MinArguments = minArguments;
+        AllowedChannelTypes = allowedChannelTypes;
     }
 }
 
@@ -36,7 +38,7 @@ public class Alias {
 public static class SystemCommandsImpl {
 
     [SystemCommand("!command", Permission.Moderator, 2)]
-    public static string Command(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
+    public static string Command(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         string commandName = args[1].ToLower();
         if(args.Matches("add .+ .+")) {
             if(server.IsCommandNameInUse(commandName, out CommandType type)) return "The name " + commandName + " is already in by " + type.Format() + ".";
@@ -101,7 +103,7 @@ public static class SystemCommandsImpl {
     }
 
     [SystemCommand("!alias", Permission.Moderator, 2)]
-    public static string Alias(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
+    public static string Alias(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         string aliasName = args[1].ToLower();
         if(args.Matches("add .+ .+")) {
             if(server.IsCommandNameInUse(aliasName, out CommandType type)) return "The name " + aliasName + " is already in by " + type.Format() + ".";
@@ -126,12 +128,12 @@ public static class SystemCommandsImpl {
     }
 
     [SystemCommand("!test")]
-    public static string Test(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
+    public static string Test(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         return "Your connection is still working.";
     }
 
     [SystemCommand("!roll")]
-    public static string Roll(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
+    public static string Roll(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         int upperBound = 100;
         if(args.Length() > 0) {
             if(!args.Matches("\\d+")) return "Correct Syntax: !roll (upper bound)";
@@ -140,8 +142,8 @@ public static class SystemCommandsImpl {
         return "The roll returns " + Random.Next(upperBound) + "!";
     }
 
-    [SystemCommand("!slots")]
-    public static string Slots(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
+    [SystemCommand("!slots", AllowedChannelTypes = ChannelType.Twitch)]
+    public static string Slots(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         if((args.Matches("emotes \\d+") || args.Matches("setemotes \\d+")) && permission >= Permission.Moderator) {
             int newEmotes = args.Int(1);
             if(newEmotes < 1) return "The number of emotes must be at least 1.";
@@ -175,8 +177,8 @@ public static class SystemCommandsImpl {
         return null;
     }
 
-    [SystemCommand("!uptime")]
-    public static string Uptime(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
+    [SystemCommand("!uptime", AllowedChannelTypes = ChannelType.Twitch)]
+    public static string Uptime(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         TwitchStream stream = Twitch.GetStream(server.IRCChannelName);
         if(stream == null) return server.IRCChannelName + " is not live.";
 
@@ -193,7 +195,7 @@ public static class SystemCommandsImpl {
     public static Dictionary<string, string> SrcCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
     [SystemCommand("!src")]
-    public static string Src(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
+    public static string Src(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         if(args.Matches("clear")) {
             SrcCache.Clear();
             return "Cache cleared.";
@@ -247,7 +249,7 @@ public static class SystemCommandsImpl {
     }
 
     [SystemCommand("!quote")]
-    public static string Quote(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
+    public static string Quote(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         if(args.Length() > 0 && permission >= Permission.Moderator) {
             if(args[0].EqualsIgnoreCase("add")) {
                 if(!args.Matches("add .+ .+")) return "Correct Syntax: !quote add (quotee) (message)";
@@ -282,7 +284,7 @@ public static class SystemCommandsImpl {
                 if(matchingQuotes.Count == 0) return "No matching quotes found.";
 
                 foreach(Quote q in matchingQuotes) {
-                    Bot.IRC.SendPrivMsg(server.IRCChannelName, FormatQuote(server, q));
+                    messageCallback(FormatQuote(server, q));
                 }
 
                 return null;
@@ -298,15 +300,15 @@ public static class SystemCommandsImpl {
         }
 
         return FormatQuote(server, Random.Next(server.Quotes));
-    }
 
-    private static string FormatQuote(Server server, Quote quote) {
-        int id = server.Quotes.IndexOf(quote) + 1;
-        return "Quote #" + id + " by " + quote.Quotee + ": \"" + quote.Message + "\"";
+        string FormatQuote(Server server, Quote quote) {
+            int id = server.Quotes.IndexOf(quote) + 1;
+            return "Quote #" + id + " by " + quote.Quotee + ": \"" + quote.Message + "\"";
+        }
     }
 
     [SystemCommand("!choose", Permission.Chatter, 1)]
-    public static string Choose(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
+    public static string Choose(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         return Random.Next(args.Join(0, args.Length(), " ").Split("|"));
     }
 
@@ -327,12 +329,12 @@ public static class SystemCommandsImpl {
     };
 
     [SystemCommand("!conchshell")]
-    public static string Conchshell(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
+    public static string Conchshell(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         return Random.Next(ConchshellAnswers);
     }
 
     [SystemCommand("!isredbar")]
-    public static string IsRedbar(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
+    public static string IsRedbar(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         if(!args.Matches("\\d+/\\d+")) {
             return "Correct Syntax: !isredbar (fraction)";
         }
@@ -348,7 +350,7 @@ public static class SystemCommandsImpl {
     }
 
     [SystemCommand("!istorrent")]
-    public static string IsTorrent(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
+    public static string IsTorrent(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         if(!args.Matches("\\d+/\\d+")) {
             return "Correct Syntax: !istorrent (fraction)";
         }
@@ -364,7 +366,7 @@ public static class SystemCommandsImpl {
     }
 
     [SystemCommand("!isprime")]
-    public static string IsPrime(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
+    public static string IsPrime(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         if(!args.Matches("\\d+")) {
             return "Correct Syntax: !isprime (number)";
         }
@@ -389,8 +391,8 @@ public static class SystemCommandsImpl {
         return number + " is " + (prime ? "" : "not ") + "a prime number.";
     }
 
-    [SystemCommand("!data")]
-    public static string Data(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
+    [SystemCommand("!data", AllowedChannelTypes = ChannelType.Twitch)]
+    public static string Data(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         DateTime date = DateTime.Now.Date;
 
         if(!server.Statistics.ContainsKey(date)) return "No data has been collected for today.";
@@ -402,7 +404,7 @@ public static class SystemCommandsImpl {
     }
 
     [SystemCommand("!expr")]
-    public static string Expr(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
+    public static string Expr(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         if(args.Length() == 0) return "Correct Syntax: !expr (math expression)";
         Expression expr = new Expression(args.Join(0, args.Length(), " "));
         if(!expr.checkSyntax()) return "Invalid expression.";
@@ -410,22 +412,22 @@ public static class SystemCommandsImpl {
         return expr.calculate().ToString();
     }
 
-    [SystemCommand("!winner", Permission.Moderator)]
-    public static string Winner(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
+    [SystemCommand("!winner", Permission.Moderator, AllowedChannelTypes = ChannelType.Twitch)]
+    public static string Winner(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         Bot.IRC.SendPrivMsg(server.IRCChannelName, "And the winning user is...");
         Thread.Sleep(2500);
         return Random.Next(Twitch.GetChatters(server.IRCChannelName)) + "!";
     }
 
-    [SystemCommand("!loser", Permission.Moderator)]
-    public static string Loser(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
+    [SystemCommand("!loser", Permission.Moderator, AllowedChannelTypes = ChannelType.Twitch)]
+    public static string Loser(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         Bot.IRC.SendPrivMsg(server.IRCChannelName, "And the losing user is...");
         Thread.Sleep(2500);
         return Random.Next(Twitch.GetChatters(server.IRCChannelName)) + "!";
     }
 
     [SystemCommand("!cooldown")]
-    public static string Cooldown(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
+    public static string Cooldown(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         if(args[0].EqualsIgnoreCase("set") && permission >= Permission.Moderator) {
             if(!args.Matches("set .+ \\d+")) return "Correct Syntax: !cooldown set (command) (cooldown in seconds)";
             string command = args[1];
@@ -443,7 +445,7 @@ public static class SystemCommandsImpl {
     }
 
     [SystemCommand("!liftcooldown", Permission.Moderator)]
-    public static string LiftCooldown(Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
+    public static string LiftCooldown(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         if(!args.Matches(".+ .+")) return "Correct Syntax: !liftcooldown (user) (command name)";
 
         string username = args[0];

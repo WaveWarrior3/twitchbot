@@ -8,7 +8,7 @@ public class TextCommand {
     public string Name;
     public string Message;
 
-    public virtual string Execute(Server server, string author, Permission permission, Arguments args) {
+    public virtual string Execute(SendMessageCallback messageCallback, Server server, string author, Permission permission, Arguments args) {
         return FormatMessage(Message, server, author, permission, args);
     }
 
@@ -40,7 +40,7 @@ public class CounterCommand : TextCommand {
 
     public int Counter;
 
-    public override string Execute(Server server, string author, Permission permission, Arguments args) {
+    public override string Execute(SendMessageCallback messageCallback, Server server, string author, Permission permission, Arguments args) {
         if(args.Length() > 0 && permission >= Permission.Moderator) {
             if(args.TryInt(0, out int newValue)) {
                 Counter = newValue;
@@ -69,7 +69,7 @@ public class FractionCommand : TextCommand {
     public int Numerator;
     public int Denominator;
 
-    public override string Execute(Server server, string author, Permission permission, Arguments args) {
+    public override string Execute(SendMessageCallback messageCallback, Server server, string author, Permission permission, Arguments args) {
         if(args.Length() > 0 && permission >= Permission.Moderator) {
             if(args.Matches("setnumerator \\d+")) {
                 Numerator = args.Int(1);
@@ -101,7 +101,7 @@ public class TimerCommand : TextCommand {
 
     public int Interval;
 
-    public override string Execute(Server server, string author, Permission permission, Arguments args) {
+    public override string Execute(SendMessageCallback messageCallback, Server server, string author, Permission permission, Arguments args) {
         if(args.Length() > 0 && permission >= Permission.Moderator) {
             if(args.TryInt(0, out int newValue)) {
                 Interval = newValue;

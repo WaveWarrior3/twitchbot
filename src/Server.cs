@@ -14,6 +14,7 @@ public class Server {
 
     public string Name;
     public string IRCChannelName;
+    public ulong DiscordGuildId;
 
     public Dictionary<string, TextCommand> CustomCommands = new Dictionary<string, TextCommand>();
     public Dictionary<string, Alias> Aliases = new Dictionary<string, Alias>();
