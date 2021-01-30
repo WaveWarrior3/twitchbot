@@ -238,7 +238,7 @@ public static class Bot {
 
     public static Server GetServerByIRCRoom(string name) {
         name = name.ToLower();
-        return Servers.Find(s => s.IRCChannelName.ToLower() == name);
+        return Servers.Find(s => s.IRCChannelName != null && s.IRCChannelName.ToLower() == name);
     }
 
     public static Server GetServerByDiscordGuild(ulong id) {
