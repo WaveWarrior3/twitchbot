@@ -13,13 +13,18 @@ public class DiscordClient {
         Client.MessageReceived += MessageReceivedAsync;
     }
 
-    public async Task ConnectAsync(Action<Event> eventCallback, string token) {
+    public async Task ConnectAsync(Action<Event> eventCallback, string token, string status) {
         EventCallback = eventCallback;
         await Client.LoginAsync(TokenType.Bot, token);
         await Client.StartAsync();
+        if(status != null) await Client.SetActivityAsync(new Game(status, ActivityType.Playing));
     }
 
-    public void SendMesssage(ISocketMessageChannel channel, string message) {
+    public void SendMessage(ulong guild, ulong channel, string message) {
+        SendMessage(Client.GetGuild(guild).GetTextChannel(channel), message);
+    }
+
+    public void SendMessage(ISocketMessageChannel channel, string message) {
         channel.SendMessageAsync(message).GetAwaiter().GetResult();
     }
 

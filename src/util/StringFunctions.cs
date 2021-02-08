@@ -27,4 +27,20 @@ public static class StringFunctions {
     public static int NumOccurrences(this string str, string chars) {
         return str.Length - str.Replace(chars, "").Length;
     }
+
+    public static string FixCapitalization(this string str) {
+        string ret = "";
+        for(int i = 0; i < str.Length; i++) {
+            char c = str[i];
+            if(i > 0) {
+                char prev = str[i - 1];
+                if(prev != ' ' && prev != '_' && prev != '.' && prev != '-') {
+                    c = c.ToString().ToLower()[0];
+                }
+            }
+            ret += c;
+        }
+
+        return ret;
+    }
 }

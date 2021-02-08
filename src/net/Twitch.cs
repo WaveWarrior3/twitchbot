@@ -23,7 +23,7 @@ public class TwitchStream {
     public string game_id;
     public string type;
     public string title;
-    public int view_count;
+    public int viewer_count;
     public string started_at;
     public string language;
     public string thumbnail_url;
@@ -69,7 +69,7 @@ public static class Twitch {
         return result;
     }
 
-    private static bool MakeAuthorizedRequest(string url, out dynamic data) {
+    public static bool MakeAuthorizedRequest(string url, out dynamic data) {
         data = null;
         if(!Http.Get(out HttpResponse response, url, "Authorization", Bot.Keys.TwitchAuthKey, "Client-Id", Bot.Keys.TwitchClientID)) {
             return false;

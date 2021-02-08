@@ -139,7 +139,7 @@ public static class SystemCommandsImpl {
             if(!args.Matches("\\d+")) return "Correct Syntax: !roll (upper bound)";
             upperBound = args.Int(0);
         }
-        return "The roll returns " + Random.Next(upperBound) + "!";
+        return "The roll returns " + Random.Next(1, Math.Max(1, upperBound)) + ".";
     }
 
     [SystemCommand("!slots", AllowedChannelTypes = ChannelType.Twitch)]
@@ -158,6 +158,13 @@ public static class SystemCommandsImpl {
             return "1/" + (int) (Math.Pow(server.NumSlotsEmotes, 2)) + " chance to win.";
         }
 
+        if(args.Matches("winners")) {
+            setCooldown = false;
+            string[] winners = server.Users.Where(u => u.Value.SlotsWins > 0).Select(u => u.Key).ToArray();
+            if(winners.Length == 0) return "No !slots winners, yet.";
+            else return string.Join(", ", winners);
+        }
+
         const int slotsSize = 3;
 
         string[] emotePool = server.Emotes.OrderBy(x => Random.Next()).Take(server.NumSlotsEmotes).Select(emote => emote.Code).ToArray();
@@ -168,10 +175,10 @@ public static class SystemCommandsImpl {
 
         int numUniques = emotes.Distinct().Count();
 
-        Bot.IRC.SendPrivMsg(server.IRCChannelName, string.Join(" | ", emotes));
+        messageCallback(string.Join(" | ", emotes));
         if(numUniques == 1) {
             user.SlotsWins++;
-            Bot.IRC.SendPrivMsg(server.IRCChannelName, author + " has won the slots! " + emotes[0]);
+            messageCallback(author + " has won the slots! " + emotes[0]);
         }
 
         return null;
@@ -309,7 +316,12 @@ public static class SystemCommandsImpl {
 
     [SystemCommand("!choose", Permission.Chatter, 1)]
     public static string Choose(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
-        return Random.Next(args.Join(0, args.Length(), " ").Split("|"));
+        string result = Random.Next(args.Join(0, args.Length(), " ").Split("|")).Trim();
+        if(result.StartsWith(".") || result.StartsWith("!")) {
+            return "AngryVoHiYo";
+        }
+
+        return result;
     }
 
     private static readonly string[] ConchshellAnswers = {
@@ -414,14 +426,14 @@ public static class SystemCommandsImpl {
 
     [SystemCommand("!winner", Permission.Moderator, AllowedChannelTypes = ChannelType.Twitch)]
     public static string Winner(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
-        Bot.IRC.SendPrivMsg(server.IRCChannelName, "And the winning user is...");
+        messageCallback("And the winning user is...");
         Thread.Sleep(2500);
         return Random.Next(Twitch.GetChatters(server.IRCChannelName)) + "!";
     }
 
     [SystemCommand("!loser", Permission.Moderator, AllowedChannelTypes = ChannelType.Twitch)]
     public static string Loser(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
-        Bot.IRC.SendPrivMsg(server.IRCChannelName, "And the losing user is...");
+        messageCallback("And the losing user is...");
         Thread.Sleep(2500);
         return Random.Next(Twitch.GetChatters(server.IRCChannelName)) + "!";
     }
@@ -456,5 +468,46 @@ public static class SystemCommandsImpl {
 
         server.Users[username].CommandTimeStamps[command] = new DateTime(0);
         return "The " + command + " cooldown for " + username + " has been lifted.";
+    }
+
+    [SystemCommand("!critrate")]
+    public static string CritRate(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
+        if(!args.Matches(".+")) return "Correct Syntax: !critrate (pokemon name)";
+        string pokemon = args[0];
+        RbySpecies species = Rby.Species.Where(s => s.Name.EqualsIgnoreCase(pokemon)).FirstOrDefault();
+
+        if(species == default) {
+            return "The pokemon " + pokemon + " does not exist.";
+        } else {
+            int x = (int) (species.BaseSpeed / 2);
+            float regular = x / 2.56f;
+            float high = Math.Min(255, x * 8) / 2.56f;
+            return "Regular Crit: " + regular + "%, High Crit: " + high + "%";
+        }
+    }
+
+    [SystemCommand("!metronome")]
+    public static string Metronome(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
+        return "Enemy Clefairy used " + Random.Next(Gsc.MetronomeMoves).Name + "!";
+    }
+
+    [SystemCommand("!randmon")]
+    public static string RandMon(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
+        return Random.Next(Gsc.RandSpecies).Name;
+    }
+
+    [SystemCommand("!randteam")]
+    public static string RandTeam(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
+        List<GscSpecies> pool = new List<GscSpecies>(Gsc.RandSpecies);
+        List<GscSpecies> team = new List<GscSpecies>();
+        for(int i = 0; i < 6; i++) {
+            GscSpecies species = Random.Next(pool);
+            pool.Remove(species);
+            team.Add(species);
+        }
+
+        team.Sort((s1, s2) => s1.Name.CompareTo(s2.Name));
+
+        return string.Join(", ", team.Select(s => s.Name));
     }
 }

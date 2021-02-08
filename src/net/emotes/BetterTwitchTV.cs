@@ -5,22 +5,24 @@ using System.Collections.Generic;
 public static class BetterTwitchTV {
 
     public static List<Emote> GetGlobalEmotes() {
-        return GetEmotesInternal("emotes/global");
-    }
-
-    public static List<Emote> GetChannelEmotes(string channelId) {
-        return GetEmotesInternal("users/twitch/" + channelId.ToLower());
-    }
-
-    private static List<Emote> GetEmotesInternal(string url) {
-        if(!Http.Get(out HttpResponse response, "https://api.betterttv.net/3/cached/" + url)) {
+        if(!Http.Get(out HttpResponse response, "https://api.betterttv.net/3/cached/emotes/global")) {
             return null;
         }
 
-        // TODO: The response JSON does not have the same layout for channel emotes
-        dynamic emotes = response.Unpack();
+        return ParseEmotes(response.Unpack());
+    }
+
+    public static List<Emote> GetChannelEmotes(string channelId) {
+        if(!Http.Get(out HttpResponse response, "https://api.betterttv.net/3/cached/users/twitch/" + channelId)) {
+            return null;
+        }
+
+        return ParseEmotes(response.Unpack().sharedEmotes);
+    }
+
+    private static List<Emote> ParseEmotes(dynamic array) {
         List<Emote> result = new List<Emote>();
-        foreach(dynamic emote in emotes) {
+        foreach(dynamic emote in array) {
             result.Add(new Emote {
                 Code = emote.code,
                 Id = -1,

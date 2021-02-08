@@ -28,6 +28,9 @@ public class Server {
     public string LastStreamId = "";
 
     [JsonIgnore]
+    public Action<Bot, TwitchStream> OnStreamLive;
+
+    [JsonIgnore]
     public List<Emote> Emotes = new List<Emote>();
     [JsonIgnore]
     public string TwitchChannelId = null;

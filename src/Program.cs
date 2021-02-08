@@ -1,8 +1,9 @@
 ﻿using System;
+using System.Linq;
 using System.Globalization;
 using System.IO;
-using System.Collections.Generic;
 using Newtonsoft.Json;
+using Discord;
 
 public class Program {
 
@@ -59,14 +60,22 @@ public class Program {
 
     public static void Main(string[] args) {
         CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
-        //RegisterServer("stringflow", 0);
-        RegisterServer("gunnermaniac", "gunnermaniac", 131475899483684864);
-        RegisterServer("gchat", null, 665362563349086289);
-        RegisterServer("pokeguy", "pokeguy", 492036928485720074);
-        Bot.Start();
+
+        Bot senjo = new Bot("SenjougharaBot", Bot.Keys.SenjoIRCPassword, Bot.Keys.SenjoDiscordToken, "with Gunner's feelings");
+        senjo.Servers.Add(MakeServer("gunnermaniac", "gunnermaniac", 131475899483684864, (bot, stream) => {
+            bot.Discord.SendMessage(131475899483684864, 265583889827758081, "@everyone Gunner is LIVE <https://www.twitch.tv/gunnermaniac>\n" + stream.title);
+        }));
+        senjo.Servers.Add(MakeServer("gchat", null, 665362563349086289));
+        senjo.Start();
+
+        Bot umi = new Bot("Umi_Sonoda_Bot", Bot.Keys.UmiIRCPassword, Bot.Keys.UmiDiscordToken);
+        umi.Servers.Add(MakeServer("pokeguy", "pokeguy", 492036928485720074));
+        umi.Start();
+
+        senjo.Discord.Client.SetActivityAsync(new Game("with Gunner's feelings", ActivityType.Playing)).GetAwaiter().GetResult();
     }
 
-    public static void RegisterServer(string name, string twitch, ulong discord) {
+    public static Server MakeServer(string name, string twitch, ulong discord, Action<Bot, TwitchStream> onLive = null) {
         string path = "servers/" + name + ".json";
         Server server;
         if(!File.Exists(path)) {
@@ -78,6 +87,7 @@ public class Program {
 
         server.IRCChannelName = twitch;
         server.DiscordGuildId = discord;
-        Bot.Servers.Add(server);
+        server.OnStreamLive = onLive;
+        return server;
     }
 }

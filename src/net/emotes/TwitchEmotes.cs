@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Collections.Generic;
 
 public static class TwitchEmotes {
@@ -7,7 +8,7 @@ public static class TwitchEmotes {
         return GetChannelEmotes("0");
     }
 
-    public static List<Emote> GetChannelEmotes(string channelId) {
+    public static List<Emote> GetChannelEmotes(string channelId, string set = null) {
         if(!Http.Get(out HttpResponse response, "https://api.twitchemotes.com/api/v4/channels/" + channelId)) {
             return null;
         }
@@ -15,25 +16,30 @@ public static class TwitchEmotes {
         dynamic emotes = response.Unpack().emotes;
         List<Emote> result = new List<Emote>();
         foreach(dynamic emote in emotes) {
-            result.Add(new Emote {
-                Code = emote.code,
-                Id = emote.id,
-                Set = emote.emoticon_set
-            });
+            if(set == null || set == emote.emoticon_set.ToString()) {
+                result.Add(new Emote {
+                    Code = emote.code,
+                    Id = emote.id,
+                    Set = emote.emoticon_set
+                });
+            }
         }
 
         return result;
     }
 
-    public static List<Emote> GetSetEmotes(int setId) {
-        if(!Http.Get(out HttpResponse response, "https://api.twitchemotes.com/api/v4/sets", "id", setId.ToString())) {
+    public static List<Emote> GetSetEmotes(string setIds) {
+        if(!Http.Get(out HttpResponse response, "https://api.twitchemotes.com/api/v4/sets?id=" + setIds)) {
             return null;
         }
 
-        if(response.Message == "[]") return new List<Emote>();
+        dynamic sets = response.Unpack();
+        List<Emote> ret = new List<Emote>();
+        foreach(dynamic set in sets) {
+            List<Emote> emotes = GetChannelEmotes(set.channel_id.ToString(), set.set_id.ToString());
+            if(emotes != null) ret.AddRange(emotes);
+        }
 
-        dynamic set = response.Unpack();
-        List<Emote> channelEmotes = GetChannelEmotes(set[0].channel_id.ToString());
-        return channelEmotes.Where(emote => emote.Set == setId).ToList();
+        return ret;
     }
 }
