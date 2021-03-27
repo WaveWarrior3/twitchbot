@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
 public static class Gsc {
 
@@ -33,9 +35,11 @@ public static class Gsc {
         }
 
         MetronomeMoves = new List<GscMove>(Moves);
-        byte[] illegalMoves = ROM.From("MetronomeExcepts").Until(0xff);
-        for(int i = 1; i < illegalMoves.Length - 1; i++) {
-            MetronomeMoves.Remove(MetronomeMoves.Find(m => m.Id == illegalMoves[i] - 1));
+        List<byte> illegalMoves = ROM.From("MetronomeExcepts").Until(0xff).ToList();
+        illegalMoves.Add(3); // Doubleslap
+        illegalMoves.Add(227); // Encore
+        for(int i = 0; i < illegalMoves.Count; i++) {
+            MetronomeMoves.Remove(MetronomeMoves.Find(m => m.Id == illegalMoves[i]));
         }
     }
 }

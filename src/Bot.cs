@@ -16,6 +16,12 @@ public class Keys {
     public string UmiIRCPassword;
     public string UmiDiscordToken;
 
+    public string DesertCandyIRCPassword;
+    public string DesertCandyDiscordToken;
+
+    public string BetinoIRCPassword;
+    public string BetinoDiscordToken;
+
     public string TwitchAuthKey;
     public string TwitchClientID;
     public string TwitchSecret;
@@ -277,7 +283,11 @@ public class Bot {
     [TimedEvent(5)]
     public void GlobalSerialization(ulong time) {
         foreach(Server server in Servers) {
-            server.Serialize();
+            try {
+                server.Serialize();
+            } catch(Exception e) {
+                Debug.Warning("Serialization for server " + server.Name + " failed!");
+            }
         }
     }
 
@@ -331,23 +341,31 @@ public class Bot {
         }
 
         bool setCooldown = channelType == ChannelType.Twitch;
-        bool commandExecuted = false;
 
-        if(SystemCommands.TryGetValue(command, out (SystemCommand Metadata, SystemCommandFn Function) systemCommand)) {
-            if(systemCommand.Metadata.MinArguments > args.Length()) return;
-            if(systemCommand.Metadata.MinPermission > permission) return;
-            if((systemCommand.Metadata.AllowedChannelTypes & channelType) == 0) return;
-            messageCallback(SystemCommands[command].Function(messageCallback, server, user, author, permission, args, ref setCooldown));
-            commandExecuted = true;
-        }
+        new Thread(() => {
+            try {
+                string ret = null;
+                if(SystemCommands.TryGetValue(command, out (SystemCommand Metadata, SystemCommandFn Function) systemCommand)) {
+                    if(systemCommand.Metadata.MinArguments > args.Length()) return;
+                    if(systemCommand.Metadata.MinPermission > permission) return;
+                    if((systemCommand.Metadata.AllowedChannelTypes & channelType) == 0) return;
+                    ret = SystemCommands[command].Function(messageCallback, server, user, author, permission, args, ref setCooldown);
+                }
 
-        if(server.CustomCommands.TryGetValue(command, out TextCommand textCommand)) {
-            messageCallback(textCommand.Execute(messageCallback, server, author, permission, args));
-            commandExecuted = true;
-        }
+                if(server.CustomCommands.TryGetValue(command, out TextCommand textCommand)) {
+                    ret = textCommand.Execute(messageCallback, server, author, permission, args);
+                }
 
-        if(setCooldown && commandExecuted && permission != Permission.Streamer) {
-            user.CommandTimeStamps[command] = DateTime.Now;
-        }
+                if(ret != null && ret.Trim() != "") {
+                    messageCallback(ret);
+                    if(setCooldown && permission != Permission.Streamer) {
+                        user.CommandTimeStamps[command] = DateTime.Now;
+                    }
+                }
+
+            } catch(Exception e) {
+                Debug.Error("Error when executing command (" + message + "): " + e.Message);
+            }
+        }).Start();
     }
 }

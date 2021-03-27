@@ -12,10 +12,10 @@ public class Program {
     // Temp code to convert old json data to the new format
     private static void ConvertOldData() {
         Server s = new Server() {
-            Name = "pokeguy",
+            Name = "hollow_gaze",
         };
         s.Initialize();
-        dynamic old = JsonConvert.DeserializeObject(File.ReadAllText("pokeguy.json"));
+        dynamic old = JsonConvert.DeserializeObject(File.ReadAllText("franchewbacca.json"));
         foreach(var v in old.aliases) {
             s.Aliases.Add(v.Name, new Alias {
                 Name = v.Name,
@@ -66,11 +66,20 @@ public class Program {
             bot.Discord.SendMessage(131475899483684864, 265583889827758081, "@everyone Gunner is LIVE <https://www.twitch.tv/gunnermaniac>\n" + stream.title);
         }));
         senjo.Servers.Add(MakeServer("gchat", null, 665362563349086289));
+        senjo.Servers.Add(MakeServer("franchewbacca", "franchewbacca", 0));
         senjo.Start();
 
         Bot umi = new Bot("Umi_Sonoda_Bot", Bot.Keys.UmiIRCPassword, Bot.Keys.UmiDiscordToken);
         umi.Servers.Add(MakeServer("pokeguy", "pokeguy", 492036928485720074));
         umi.Start();
+
+        Bot poochers = new Bot("DesertCandy", Bot.Keys.DesertCandyIRCPassword, Bot.Keys.DesertCandyDiscordToken);
+        poochers.Servers.Add(MakeServer("shiru", "shiru666", 297359525504090112));
+        poochers.Start();
+
+        Bot betino = new Bot("Betinobot", Bot.Keys.BetinoIRCPassword, Bot.Keys.BetinoDiscordToken);
+        betino.Servers.Add(MakeServer("hollow_gaze", "hollow_gaze", 297359525504090112));
+        betino.Start();
 
         senjo.Discord.Client.SetActivityAsync(new Game("with Gunner's feelings", ActivityType.Playing)).GetAwaiter().GetResult();
     }

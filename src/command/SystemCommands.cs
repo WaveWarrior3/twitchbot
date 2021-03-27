@@ -41,7 +41,7 @@ public static class SystemCommandsImpl {
     public static string Command(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         string commandName = args[1].ToLower();
         if(args.Matches("add .+ .+")) {
-            if(server.IsCommandNameInUse(commandName, out CommandType type)) return "The name " + commandName + " is already in by " + type.Format() + ".";
+            if(server.IsCommandNameInUse(commandName, out CommandType type)) return "The name " + commandName + " is already in use by " + type.Format() + ".";
             string message = args.Join(2, args.Length(), " ");
             server.CustomCommands[commandName] = new TextCommand {
                 Name = commandName,
@@ -106,7 +106,7 @@ public static class SystemCommandsImpl {
     public static string Alias(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         string aliasName = args[1].ToLower();
         if(args.Matches("add .+ .+")) {
-            if(server.IsCommandNameInUse(aliasName, out CommandType type)) return "The name " + aliasName + " is already in by " + type.Format() + ".";
+            if(server.IsCommandNameInUse(aliasName, out CommandType type)) return "The name " + aliasName + " is already in use by " + type.Format() + ".";
             string command = args.Join(2, args.Length(), " ");
             server.Aliases[aliasName] = new Alias {
                 Name = aliasName,
@@ -136,10 +136,10 @@ public static class SystemCommandsImpl {
     public static string Roll(SendMessageCallback messageCallback, Server server, User user, string author, Permission permission, Arguments args, ref bool setCooldown) {
         int upperBound = 100;
         if(args.Length() > 0) {
-            if(!args.Matches("\\d+")) return "Correct Syntax: !roll (upper bound)";
-            upperBound = args.Int(0);
+            if(!args.TryInt(0, out int ret)) return "Correct Syntax: !roll (upper bound)";
+            upperBound = ret;
         }
-        return "The roll returns " + Random.Next(1, Math.Max(1, upperBound)) + ".";
+        return "The roll returns " + (Random.Next(0, Math.Max(1, upperBound)) + 1) + ".";
     }
 
     [SystemCommand("!slots", AllowedChannelTypes = ChannelType.Twitch)]

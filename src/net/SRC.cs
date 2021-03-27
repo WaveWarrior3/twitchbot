@@ -150,9 +150,10 @@ public static class SRC {
     public static List<SRCRun> GetLeaderboardPlace(SRCCategory category, int place) {
         List<SRCVariable> variables = GetVariables(category);
         StringBuilder queryParameters = new StringBuilder();
-        foreach(SRCVariable variable in variables) {
+        for(int i = 0; i < variables.Count; i++) {
+            SRCVariable variable = variables[i];
             if(variable.Default != null) {
-                queryParameters.Append("?var-" + variable.Id + "=" + variable.Default);
+                queryParameters.Append((i == 0 ? "?" : "&") + "var-" + variable.Id + "=" + variable.Default);
             }
         }
 

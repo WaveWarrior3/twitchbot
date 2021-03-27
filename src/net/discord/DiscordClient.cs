@@ -30,7 +30,7 @@ public class DiscordClient {
 
     private async Task MessageReceivedAsync(SocketMessage message) {
         // Ignore non-guild message for now.
-        if(message.Author is SocketGuildUser) {
+        if(message.Author is SocketGuildUser && !message.Author.IsBot) {
             EventCallback(new DiscordMessageReceivedEvent() {
                 Message = message,
                 Author = (SocketGuildUser) message.Author,
