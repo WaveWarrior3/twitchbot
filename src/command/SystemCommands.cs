@@ -49,15 +49,19 @@ public static class SystemCommandsImpl {
             };
             return "Command " + commandName + " has been added.";
         } else if(args.Matches("edit .+ .+")) {
-            if(!server.CustomCommands.TryGetValue(commandName, out TextCommand textCommand)) return "Command " + commandName + " does not exist.";
+            if(!server.TryGetCommand(commandName, out TextCommand textCommand)) return "Command " + commandName + " does not exist.";
             textCommand.Message = args.Join(2, args.Length(), " ");
             return "Command " + commandName + " has been edited.";
         } else if(args.Matches("del .+")) {
-            if(!server.CustomCommands.TryGetValue(commandName, out TextCommand textCommand)) return "Command " + commandName + " does not exist.";
+            if(!server.TryGetCommand(commandName, out TextCommand textCommand)) return "Command " + commandName + " does not exist.";
             server.CustomCommands.Remove(commandName);
+            List<string> aliases = server.FindAliases(commandName);
+            foreach(string alias in aliases) {
+                server.Aliases.Remove(alias);
+            }
             return "Command " + commandName + " has been removed.";
         } else if(args.Matches("transform .+ .+")) {
-            if(!server.CustomCommands.TryGetValue(commandName, out TextCommand oldCommand)) return "Command " + commandName + " does not exist.";
+            if(!server.TryGetCommand(commandName, out TextCommand oldCommand)) return "Command " + commandName + " does not exist.";
             server.CustomCommands.Remove(commandName);
             string type = args[2].ToLower();
 

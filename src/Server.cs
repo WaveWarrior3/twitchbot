@@ -83,4 +83,29 @@ public class Server {
         type = CommandType.None;
         return false;
     }
+
+    public bool TryGetCommand(string name, out TextCommand command) {
+        if(CustomCommands.TryGetValue(name, out command)) {
+            return true;
+        }
+
+        if(Aliases.TryGetValue(name, out Alias alias)) {
+            command = CustomCommands[alias.Command];
+            return true;
+        }
+
+        command = null;
+        return false;
+    }
+
+    public List<string> FindAliases(string command) {
+        List<string> ret = new List<string>();
+        foreach(Alias alias in Aliases.Values) {
+            if(alias.Command.EqualsIgnoreCase(command)) {
+                ret.Add(alias.Name);
+            }
+        }
+
+        return ret;
+    }
 }
