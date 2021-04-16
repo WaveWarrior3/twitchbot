@@ -119,7 +119,7 @@ public static class SystemCommandsImpl {
             return "Alias " + aliasName + " has been edited.";
         } else if(args.Matches("del .+")) {
             if(!server.Aliases.TryGetValue(aliasName, out Alias alias)) return "Alias " + aliasName + " does not exist.";
-            server.CustomCommands.Remove(aliasName);
+            server.Aliases.Remove(aliasName);
             return "Alias " + aliasName + " has been removed.";
         }
 
@@ -174,14 +174,17 @@ public static class SystemCommandsImpl {
         }
 
         int numUniques = emotes.Distinct().Count();
+        string slots = string.Join(" | ", emotes);
 
-        messageCallback(string.Join(" | ", emotes));
         if(numUniques == 1) {
             user.SlotsWins++;
-            messageCallback(author + " has won the slots! " + emotes[0]);
+            messageCallback(slots);
+            return author + " has won the slots! " + emotes[0];
+        } else {
+
         }
 
-        return null;
+        return slots;
     }
 
     [SystemCommand("!uptime", AllowedChannelTypes = ChannelType.Twitch)]
@@ -384,20 +387,18 @@ public static class SystemCommandsImpl {
         }
 
         int number = args.Int(0);
-        bool prime;
+        bool prime = true;
 
         if(number <= 1) prime = false;
-        else if(number == 2) prime = true;
         else if(number % 2 == 0) prime = false;
-        else {
+        else if(number != 2) {
             int max = (int) Math.Floor(Math.Sqrt(number));
-            for(int i = 3; i < max; i += 2) {
+            for(int i = 3; i <= max; i += 2) {
                 if(number % i == 0) {
                     prime = false;
                     break;
                 }
             }
-            prime = true;
         }
 
         return number + " is " + (prime ? "" : "not ") + "a prime number.";

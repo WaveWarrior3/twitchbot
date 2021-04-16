@@ -106,12 +106,14 @@ public class Bot {
             server.Initialize();
         }
 
-        if(IRCName != null && IRCPassword != null) StartIRCThread();
-        if(DiscordToken != null) StartDiscord();
+        StartIRCThread();
+        StartDiscord();
         StartTimedEvents();
     }
 
     public void StartIRCThread() {
+        if(IRCName == null || IRCPassword == null) return;
+
         IRC = new IRCConnection() {
             Server = "irc.twitch.tv",
             Port = 6667,
@@ -127,18 +129,21 @@ public class Bot {
             do {
                 IRC.EstablishConnection();
                 IRC.ProcessMessages(OnEvent);
-            } while(autoReconnect);
+            } while(autoReconnect && Thread.CurrentThread.ManagedThreadId == IRCThread.ManagedThreadId);
+
         });
         IRCThread.Start();
     }
 
     public void StartDiscord() {
-        IRCThread = new Thread(() => {
+        if(DiscordToken == null) return;
+
+        DiscordThread = new Thread(() => {
             Discord = new DiscordClient();
             Discord.ConnectAsync(OnEvent, DiscordToken, DiscordStatus).GetAwaiter().GetResult();
             Task.Delay(Timeout.Infinite);
         });
-        IRCThread.Start();
+        DiscordThread.Start();
     }
 
     public void StartTimedEvents() {
@@ -255,6 +260,13 @@ public class Bot {
                 }
             }
         }
+    }
+
+    [TimedEvent(3600 * 3)]
+    public void GlobalIRCAutoDisconnect(ulong time) {
+        Debug.Info("Scheduled IRC restart!");
+        IRC.Dispose();
+        StartIRCThread();
     }
 
     [TimedEvent(15)]
